@@ -1,0 +1,24 @@
+{
+  "name": "botconversor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoelPallero/BotConversor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JoelPallero/BotConversor/issues"
+  },
+  "homepage": "https://github.com/JoelPallero/BotConversor#readme",
+  "dependencies": {
+    "fs-extra": "^11.3.4"
+  }
+}
