@@ -1,22 +1,17 @@
-<?php get_header(); ?>
+<?php
+/**
+ * Renderiza el contenido directamente desde la base de datos de WordPress
+ */
+get_header(); ?>
 
 <main id="content" class="site-main">
-  <div class="container content-layout">
-    <div class="content-area">
-      <?php if (have_posts()) : ?>
-        <?php while (have_posts()) : the_post(); ?>
-          <?php get_template_part('templates/content', 'page'); ?>
-        <?php endwhile; ?>
-      <?php else : ?>
-        <p><?php esc_html_e('No se encontró la página.', 'hello-trompo'); ?></p>
-      <?php endif; ?>
-    </div>
-
-    <aside class="sidebar">
-      <?php get_sidebar(); ?>
-    </aside>
-  </div>
+    <?php
+    if (have_posts()) :
+        while (have_posts()) : the_post();
+            the_content();
+        endwhile;
+    endif;
+    ?>
 </main>
 
 <?php get_footer(); ?>
-
