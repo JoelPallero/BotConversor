@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/JoelPallero/BotConversor#readme",
   "dependencies": {
+    "archiver": "^7.0.1",
+    "cheerio": "^1.2.0",
     "fs-extra": "^11.3.4"
   }
 }

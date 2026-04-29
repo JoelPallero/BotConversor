@@ -29,6 +29,55 @@ Este documento define las reglas estrictas bajo las cuales debe operar el BotCon
 ## 5. Metadatos del Tema
 - En el archivo `style.css` de la raíz del nuevo tema, el nombre del tema (ej. `Theme Name: Trompo Theme`) se debe mantener idéntico (para no romper configuraciones).
 - Se debe modificar la **Descripción** para reflejar que es para el cliente específico: `Description: Tema Trompo personalizado para [Nombre Cliente].`
+## El nombre del sitio tiene que ser `[Nombre Cliente]` y se debe insertar en el archivo `functions.php` dentro de la funcion `setup_site_identity` y cambiar el valor de `site_title`.
 
 ## 6. Autonomía
 - El bot debe ejecutarse de forma independiente, comprobando sus propias dependencias y creándolas / instalándolas si faltan, sin requerir intervención extra del usuario.
+
+---
+
+## 7. Reglas de Ejecución WordPress (🔴 OBLIGATORIO)
+
+- `auto-setup.php` **DEBE** siempre ser requerido desde `functions.php` usando el patrón con variable:
+  ```php
+  $auto_setup_file = get_template_directory() . '/inc/auto-setup.php';
+  if (file_exists($auto_setup_file)) {
+      require_once $auto_setup_file;
+  }
+  ```
+- El sistema **NO DEBE** depender solamente de `after_switch_theme`.
+- Una ejecución de fallback vía `admin_init` es **OBLIGATORIA** para garantizar que el setup se complete aunque el hook de activación falle.
+
+## 8. Reglas de Renderizado de Templates (🔴 OBLIGATORIO)
+
+- El HTML **DEBE** ser convertido en templates PHP reales (`front-page.php`, `page-{slug}.php`).
+- Usar solamente `the_content()` **NO** es suficiente para producción.
+- `front-page.php` **DEBE** existir si se detecta una página de inicio.
+- `page-{slug}.php` **DEBE** ser generado para cada archivo HTML procesado.
+- Cada template debe incluir `<?php get_header(); ?>` al inicio y `<?php get_footer(); ?>` al final.
+
+## 9. Reglas de Robustez (🔴 OBLIGATORIO)
+
+- `header.php` **DEBE** siempre incluir `wp_head()`.
+- `footer.php` **DEBE** siempre incluir `wp_footer()`.
+- Si no se encuentran en el HTML original, **DEBEN** ser inyectados como fallback.
+- Si existe `<footer>` pero no tiene `wp_footer()`, debe inyectarse antes de `</body>`.
+- Si no existe `<head>`, debe generarse un `<head>` completo válido con `wp_head()`.
+
+## 10. Reglas de Detección de Home (🔴 OBLIGATORIO)
+
+- La detección de página de inicio debe ser flexible y basada en regex.
+- Debe soportar los siguientes patrones (incluyendo compuestos como `front-page-v2`):
+  - `home`
+  - `index`
+  - `inicio`
+  - `front-page`
+  - `frontpage`
+- Si solo hay un archivo HTML, se asume como home automáticamente.
+
+## 11. Reglas de Sincronización con Base de Datos (🔴 OBLIGATORIO)
+
+- Las páginas **DEBEN** ser creadas O actualizadas (nunca omitidas).
+- Los slugs **DEBEN** ser aplicados en la actualización (`post_name`).
+- `post_type` **DEBE** ser siempre `'page'` en `wp_update_post`.
+- `post_status` **DEBE** ser siempre `'publish'`.

@@ -74,6 +74,22 @@ if (fs.existsSync(styleCssPath)) {
     console.log('📝 Metadatos del tema actualizados (style.css).');
 }
 
+// 2b. Asegurar que functions.php incluya auto-setup.php
+const functionsPath = path.join(newThemeDir, 'functions.php');
+if (fs.existsSync(functionsPath)) {
+    let functionsContent = fs.readFileSync(functionsPath, 'utf8');
+
+    // Solo inyectar si NO existe ya un require de auto-setup
+    if (!/require_once\s+\$auto_setup_file/.test(functionsContent)) {
+        const autoSetupSnippet = `\n// Incluir auto-setup si fue generado por BotConversor\n$auto_setup_file = get_template_directory() . '/inc/auto-setup.php';\n\nif (file_exists($auto_setup_file)) {\n    require_once $auto_setup_file;\n}\n`;
+        functionsContent = functionsContent.trimEnd() + '\n' + autoSetupSnippet;
+        fs.writeFileSync(functionsPath, functionsContent);
+        console.log('📝 functions.php actualizado con require de auto-setup.php.');
+    } else {
+        console.log('📝 functions.php ya contiene require de auto-setup.php. OK.');
+    }
+}
+
 const mainCssPath = path.join(newThemeDir, 'assets', 'css', 'main.css');
 let cssRules = [];
 let styleCounter = 1;
@@ -99,7 +115,7 @@ for (const file of htmlFiles) {
     html = html.replace(/<([a-zA-Z0-9\-]+)([^>]*?)\bstyle\s*=\s*(["'])([\s\S]*?)\3([^>]*?)>/gi, (match, tagName, beforeStyle, quote, styleContent, afterStyle) => {
         let className = `tc-inline-${folderName}-${styleCounter++}`;
         cssRules.push(`/* Extraído de ${file} */\n.${className} { ${styleContent} }`);
-        
+
         let restOfTag = beforeStyle + afterStyle;
         if (/class\s*=\s*["']/i.test(restOfTag)) {
             restOfTag = restOfTag.replace(/class\s*=\s*(["'])(.*?)\1/i, (matchCls, q, existingClasses) => {
@@ -149,15 +165,32 @@ for (const file of htmlFiles) {
     const footerMatch = bodyContent.match(footerRegex);
     if (footerMatch) {
         footerContent = footerMatch[0];
-        footerContent = footerContent.replace(/<\/body>/i, '<?php wp_footer(); ?>\n</body>');
+        // Asegurar wp_footer() antes de </body>
+        if (/<\/body>/i.test(footerContent)) {
+            if (!/wp_footer/i.test(footerContent)) {
+                footerContent = footerContent.replace(/<\/body>/i, '<?php wp_footer(); ?>\n</body>');
+            }
+        } else {
+            // No hay </body>, agregamos cierre completo
+            footerContent += '\n<?php wp_footer(); ?>\n</body>\n</html>';
+        }
         bodyContent = bodyContent.substring(0, footerMatch.index);
     } else {
         const scriptRegex = /(<script[\s\S]*<\/html>)/i;
         const scriptMatch = bodyContent.match(scriptRegex);
         if (scriptMatch) {
             footerContent = scriptMatch[0];
-            footerContent = footerContent.replace(/<\/body>/i, '<?php wp_footer(); ?>\n</body>');
+            if (/<\/body>/i.test(footerContent)) {
+                if (!/wp_footer/i.test(footerContent)) {
+                    footerContent = footerContent.replace(/<\/body>/i, '<?php wp_footer(); ?>\n</body>');
+                }
+            } else {
+                footerContent += '\n<?php wp_footer(); ?>\n</body>\n</html>';
+            }
             bodyContent = bodyContent.substring(0, scriptMatch.index);
+        } else {
+            // FIX #4: No <footer> found at all → force a minimal footer
+            footerContent = '<?php wp_footer(); ?>\n</body>\n</html>';
         }
     }
 
@@ -168,6 +201,25 @@ for (const file of htmlFiles) {
     if (isFirstFile) {
         const globalHeaderPath = path.join(newThemeDir, 'header.php');
         const globalFooterPath = path.join(newThemeDir, 'footer.php');
+
+        // FIX #4: Fallback header — if no <head> was found, generate a valid one
+        if (!headContent.trim()) {
+            headContent = `<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+  <meta charset="<?php bloginfo('charset'); ?>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <?php wp_head(); ?>
+</head>`;
+            console.log('    ⚠️ No se encontró <head> en el HTML. Se generó un head de fallback con wp_head().');
+        }
+
+        // FIX #4: Fallback header content — if no <body>/<nav>/<header> was found
+        if (!headerContent.trim()) {
+            headerContent = `<body <?php body_class(); ?>>\n<?php wp_body_open(); ?>`;
+            console.log('    ⚠️ No se encontró <body>/<header>/<nav>. Se generó body tag de fallback.');
+        }
+
         fs.writeFileSync(globalHeaderPath, headContent + '\n' + headerContent);
         fs.writeFileSync(globalFooterPath, footerContent);
         console.log('    ✔️ Creados header.php y footer.php globales.');
@@ -177,34 +229,67 @@ for (const file of htmlFiles) {
     // Normalizar nombres para DB
     let rawName = file.replace(/\.html$/i, '').replace(/[-_]/g, ' ');
     let cleanName = rawName.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, '').replace(/\s+/g, ' ').trim();
-    
+
     // Normalizar slugs para identificar si es home
     let normalizedName = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    let isHome = htmlFiles.length === 1 || /^(home|index|inicio)$/i.test(normalizedName);
-    
+
+    // FIX #3: Home detection — flexible regex supporting compound names
+    let isHome = htmlFiles.length === 1 || /(^|[-_\s])(home|index|inicio|frontpage|front-page)([-_\s]|$)/i.test(normalizedName);
+
     // Escapar el contenido HTML para que entre correctamente como string en el auto-setup.php
     // Usamos base64 para evitar todos los problemas de escape en strings PHP
     let encodedContent = Buffer.from(bodyContent).toString('base64');
-    
+
+    let slug;
     if (isHome) {
-        createdPages.push({ slug: 'inicio', title: 'Inicio', is_home: true, content_b64: encodedContent });
+        slug = 'inicio';
+        createdPages.push({ slug: slug, title: 'Inicio', is_home: true, content_b64: encodedContent, bodyContent: bodyContent });
         console.log(`    ✔️ Identificada como página de Inicio.`);
     } else {
-        let slug = normalizedName.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        createdPages.push({ slug: slug, title: cleanName, is_home: false, content_b64: encodedContent });
+        slug = normalizedName.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        createdPages.push({ slug: slug, title: cleanName, is_home: false, content_b64: encodedContent, bodyContent: bodyContent });
         console.log(`    ✔️ Identificada como página interna: ${cleanName}`);
     }
 }
 
-// 3. Crear templates genéricos de WordPress
-console.log(`\n⚙️  Generando templates de renderizado...`);
-const frontPagePath = path.join(newThemeDir, 'front-page.php');
-const pagePath = path.join(newThemeDir, 'page.php');
+// 3. Generar REAL PHP templates desde el HTML (no solo the_content())
+console.log(`\n⚙️  Generando templates PHP reales...`);
 
-const wpLoopTemplate = `<?php
+for (const page of createdPages) {
+    let templateFileName;
+    if (page.is_home) {
+        templateFileName = 'front-page.php';
+    } else {
+        templateFileName = `page-${page.slug}.php`;
+    }
+
+    const templateContent = `<?php
 /**
- * Renderiza el contenido directamente desde la base de datos de WordPress
+ * Template: ${templateFileName}
+ * Generado automáticamente por BotConversor para: ${page.title}
+ *
+ * @package hello-trompo
+ */
+get_header(); ?>
+
+${page.bodyContent}
+
+<?php get_footer(); ?>
+`;
+
+    const templatePath = path.join(newThemeDir, templateFileName);
+    fs.writeFileSync(templatePath, templateContent);
+    console.log(`    ✔️ Creado template: ${templateFileName}`);
+}
+
+// Also generate a generic page.php fallback with the_content() loop
+const pageFallbackPath = path.join(newThemeDir, 'page.php');
+const pageFallbackContent = `<?php
+/**
+ * Fallback genérico para páginas sin template específico (page-{slug}.php)
+ * Renderiza el contenido desde la base de datos de WordPress
+ *
+ * @package hello-trompo
  */
 get_header(); ?>
 
@@ -220,10 +305,8 @@ get_header(); ?>
 
 <?php get_footer(); ?>
 `;
-
-fs.writeFileSync(frontPagePath, wpLoopTemplate);
-fs.writeFileSync(pagePath, wpLoopTemplate);
-console.log('    ✔️ Creados front-page.php y page.php dinámicos con the_content().');
+fs.writeFileSync(pageFallbackPath, pageFallbackContent);
+console.log('    ✔️ Creado page.php genérico (fallback con the_content()).');
 
 // 4. Inyectar CSS si es necesario
 if (cssRules.length > 0) {
@@ -234,7 +317,7 @@ if (cssRules.length > 0) {
     console.log(`🎨 Estilos inyectados en assets/css/main.css`);
 }
 
-// 5. Generar script auto-setup.php
+// 5. Generar script auto-setup.php con fallback admin_init
 console.log(`\n⚙️  Generando lógica de importación en inc/auto-setup.php...`);
 const incDir = path.join(newThemeDir, 'inc');
 fse.ensureDirSync(incDir);
@@ -252,11 +335,29 @@ let phpPagesArray = createdPages.map(p => {
 const autoSetupContent = `<?php
 /**
  * Auto Setup: Importa HTML a la DB y configura Home automáticamente
+ * Generado por BotConversor
+ *
+ * Ejecuta en after_switch_theme (activación) y admin_init (fallback único).
  */
+
+// Hook principal: se ejecuta al activar el tema
+add_action('after_switch_theme', 'hello_trompo_auto_setup_pages');
+
+// FIX #2: Fallback — se ejecuta UNA vez en admin_init si el setup no se completó
+add_action('admin_init', 'hello_trompo_run_auto_setup_once');
+
+function hello_trompo_run_auto_setup_once() {
+    if (!current_user_can('manage_options')) return;
+
+    if (!get_option('hello_trompo_auto_setup_done')) {
+        hello_trompo_auto_setup_pages();
+        update_option('hello_trompo_auto_setup_done', 1);
+    }
+}
 
 function hello_trompo_auto_setup_pages() {
     $log_file = WP_CONTENT_DIR . '/theme-setup-log.txt';
-    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] Iniciando importacion de paginas BotConversor...\n", FILE_APPEND);
+    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] Iniciando importacion de paginas BotConversor...\\n", FILE_APPEND);
 
     $pages = array(
 ${phpPagesArray}
@@ -279,24 +380,26 @@ ${phpPagesArray}
             ));
 
             if (!is_wp_error($page_id)) {
-                file_put_contents($log_file, "Creada pagina: {$p['title']} (Slug: {$p['slug']}, ID: {$page_id})\n", FILE_APPEND);
+                file_put_contents($log_file, "Creada pagina: {$p['title']} (Slug: {$p['slug']}, ID: {$page_id})\\n", FILE_APPEND);
             } else {
-                file_put_contents($log_file, "Error creando {$p['slug']}: " . $page_id->get_error_message() . "\n", FILE_APPEND);
+                file_put_contents($log_file, "Error creando {$p['slug']}: " . $page_id->get_error_message() . "\\n", FILE_APPEND);
             }
         } else {
-            // La página existe, actualizamos su contenido y forzamos publish
+            // FIX #5: La página existe — actualizar con slug, post_type y contenido completo
             $page_id = $existing->ID;
             $update_result = wp_update_post(array(
                 'ID'           => $page_id,
                 'post_title'   => $p['title'],
+                'post_name'    => $p['slug'],
                 'post_status'  => 'publish',
+                'post_type'    => 'page',
                 'post_content' => $p['content']
             ));
             
             if (!is_wp_error($update_result)) {
-                file_put_contents($log_file, "Actualizada pagina: {$p['title']} (Slug: {$p['slug']}, ID: {$page_id})\n", FILE_APPEND);
+                file_put_contents($log_file, "Actualizada pagina: {$p['title']} (Slug: {$p['slug']}, ID: {$page_id})\\n", FILE_APPEND);
             } else {
-                file_put_contents($log_file, "Error actualizando {$p['slug']}: " . $update_result->get_error_message() . "\n", FILE_APPEND);
+                file_put_contents($log_file, "Error actualizando {$p['slug']}: " . $update_result->get_error_message() . "\\n", FILE_APPEND);
             }
         }
 
@@ -310,18 +413,20 @@ ${phpPagesArray}
     if ($home_id) {
         update_option('show_on_front', 'page');
         update_option('page_on_front', $home_id);
-        file_put_contents($log_file, "Exito: Front-page configurada con la pagina ID: {$home_id}\n", FILE_APPEND);
+        file_put_contents($log_file, "Exito: Front-page configurada con la pagina ID: {$home_id}\\n", FILE_APPEND);
     } else {
-        file_put_contents($log_file, "Aviso: No se identifico ninguna pagina como Inicio.\n", FILE_APPEND);
+        file_put_contents($log_file, "Aviso: No se identifico ninguna pagina como Inicio.\\n", FILE_APPEND);
     }
     
-    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] Importacion finalizada.\n\n", FILE_APPEND);
+    // Marcar como completado
+    update_option('hello_trompo_auto_setup_done', 1);
+    
+    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] Importacion finalizada.\\n\\n", FILE_APPEND);
 }
-add_action('after_switch_theme', 'hello_trompo_auto_setup_pages');
 `;
 
 fs.writeFileSync(autoSetupPath, autoSetupContent);
-console.log('    ✔️ Creado auto-setup.php con logs y soporte para db insert/update.');
+console.log('    ✔️ Creado auto-setup.php con fallback admin_init y wp_update_post robusto.');
 
 console.log(`\n✅ Proceso completado exitosamente.`);
 console.log(`   El nuevo tema se encuentra en: ${newThemeDir}`);
