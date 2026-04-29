@@ -363,10 +363,6 @@ function hello_trompo_auto_setup_pages() {
 ${phpPagesArray}
     );
 
-    // Setear nombre del sitio y limpiar descripción
-    update_option('blogname', '${clientName}');
-    update_option('blogdescription', '');
-
     $home_id = 0;
 
     foreach ($pages as $p) {

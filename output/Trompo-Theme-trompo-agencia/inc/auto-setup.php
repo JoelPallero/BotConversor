@@ -34,6 +34,10 @@ function hello_trompo_auto_setup_pages() {
         )
     );
 
+    // Setear nombre del sitio y limpiar descripción
+    update_option('blogname', 'Trompo Agencia');
+    update_option('blogdescription', '');
+
     $home_id = 0;
 
     foreach ($pages as $p) {
