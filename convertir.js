@@ -2,18 +2,250 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Asegurar que fs-extra esté instalado
+// Asegurar dependencias necesarias
 function ensureDependencies() {
-    try {
-        require('fs-extra');
-    } catch (e) {
-        console.log("Instalando dependencias necesarias (fs-extra)...");
-        execSync('npm install fs-extra', { stdio: 'inherit' });
+    for (const dep of ['fs-extra', 'archiver']) {
+        try {
+            require(dep);
+        } catch (e) {
+            console.log(`Instalando dependencia necesaria (${dep})...`);
+            execSync(`npm install ${dep}`, { stdio: 'inherit' });
+        }
     }
 }
 ensureDependencies();
 
 const fse = require('fs-extra');
+
+// ===== Manejo de assets externos (CSS, JS, imágenes, fuentes, etc.) =====
+
+const ASSET_EXTENSIONS = new Set([
+    '.css', '.js', '.mjs',
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.avif', '.bmp', '.tiff',
+    '.woff', '.woff2', '.ttf', '.eot', '.otf',
+    '.mp4', '.webm', '.ogg', '.mp3', '.wav',
+    '.pdf', '.json', '.xml', '.map'
+]);
+
+function isLocalAssetUrl(url) {
+    if (!url) return false;
+    url = url.trim();
+    if (url.startsWith('http://') || url.startsWith('https://') ||
+        url.startsWith('//') || url.startsWith('data:') ||
+        url.startsWith('#') || url.startsWith('mailto:') ||
+        url.startsWith('tel:') || url.startsWith('javascript:')) return false;
+    const clean = url.split('?')[0].split('#')[0].trim();
+    const ext = path.extname(clean).toLowerCase();
+    return ASSET_EXTENSIONS.has(ext);
+}
+
+function cleanUrl(url) {
+    return url.split('?')[0].split('#')[0].trim();
+}
+
+function collectHtmlAssets(html) {
+    const assets = new Set();
+    let m;
+
+    const hrefRegex = /\shref\s*=\s*(["'])(.*?)\1/gi;
+    while ((m = hrefRegex.exec(html)) !== null) {
+        const url = cleanUrl(m[2]);
+        if (isLocalAssetUrl(url)) assets.add(url);
+    }
+
+    const srcRegex = /\ssrc\s*=\s*(["'])(.*?)\1/gi;
+    while ((m = srcRegex.exec(html)) !== null) {
+        const url = cleanUrl(m[2]);
+        if (isLocalAssetUrl(url)) assets.add(url);
+    }
+
+    const srcsetRegex = /\ssrcset\s*=\s*(["'])(.*?)\1/gi;
+    while ((m = srcsetRegex.exec(html)) !== null) {
+        for (const part of m[2].split(',')) {
+            const url = cleanUrl(part.trim().split(/\s+/)[0]);
+            if (isLocalAssetUrl(url)) assets.add(url);
+        }
+    }
+
+    return [...assets];
+}
+
+function collectCssAssets(cssContent) {
+    const assets = new Set();
+    const urlRegex = /url\s*\(\s*(["']?)(.*?)\1\s*\)/gi;
+    let m;
+    while ((m = urlRegex.exec(cssContent)) !== null) {
+        const url = cleanUrl(m[2]);
+        if (isLocalAssetUrl(url)) assets.add(url);
+    }
+    return [...assets];
+}
+
+function copyExternalAssets(htmlAssets, inputDir, newThemeDir) {
+    const copied = new Set();
+    const queue = htmlAssets.map(a => ({ assetPath: a, baseDir: '' }));
+
+    while (queue.length > 0) {
+        const { assetPath, baseDir } = queue.shift();
+        const resolvedPath = baseDir
+            ? path.join(baseDir, assetPath).replace(/\\/g, '/')
+            : assetPath;
+
+        if (copied.has(resolvedPath)) continue;
+
+        const sourcePath = path.join(inputDir, resolvedPath);
+        if (!fs.existsSync(sourcePath)) continue;
+
+        const destPath = path.join(newThemeDir, resolvedPath);
+        fse.ensureDirSync(path.dirname(destPath));
+        fse.copySync(sourcePath, destPath);
+        copied.add(resolvedPath);
+
+        if (resolvedPath.endsWith('.css')) {
+            const cssContent = fs.readFileSync(sourcePath, 'utf8');
+            const cssDir = path.dirname(resolvedPath);
+            for (const cssAsset of collectCssAssets(cssContent)) {
+                queue.push({ assetPath: cssAsset, baseDir: cssDir });
+            }
+        }
+    }
+
+    return [...copied];
+}
+
+function rewriteHtmlAssetPaths(html, copiedAssets) {
+    if (copiedAssets.length === 0) return html;
+    const copiedSet = new Set(copiedAssets.map(p => p.replace(/\\/g, '/')));
+
+    const wpUri = (p) => `<?php echo get_template_directory_uri(); ?>/${p}`;
+
+    html = html.replace(/(\shref\s*=\s*)(["'])(.*?)\2/gi, (match, prefix, quote, href) => {
+        const clean = cleanUrl(href);
+        return (isLocalAssetUrl(clean) && copiedSet.has(clean))
+            ? `${prefix}${quote}${wpUri(clean)}${quote}`
+            : match;
+    });
+
+    html = html.replace(/(\ssrc\s*=\s*)(["'])(.*?)\2/gi, (match, prefix, quote, src) => {
+        const clean = cleanUrl(src);
+        return (isLocalAssetUrl(clean) && copiedSet.has(clean))
+            ? `${prefix}${quote}${wpUri(clean)}${quote}`
+            : match;
+    });
+
+    html = html.replace(/(\ssrcset\s*=\s*)(["'])(.*?)\2/gi, (_match, prefix, quote, srcset) => {
+        const parts = srcset.split(',').map(part => {
+            const trimmed = part.trim();
+            const spaceIdx = trimmed.search(/\s/);
+            if (spaceIdx === -1) {
+                const clean = cleanUrl(trimmed);
+                return (isLocalAssetUrl(clean) && copiedSet.has(clean)) ? wpUri(clean) : trimmed;
+            }
+            const url = trimmed.substring(0, spaceIdx);
+            const descriptor = trimmed.substring(spaceIdx);
+            const clean = cleanUrl(url);
+            return (isLocalAssetUrl(clean) && copiedSet.has(clean))
+                ? wpUri(clean) + descriptor
+                : trimmed;
+        });
+        return `${prefix}${quote}${parts.join(', ')}${quote}`;
+    });
+
+    return html;
+}
+
+// ===== Revisión de calidad del tema generado =====
+
+function getAllPhpFiles(dir) {
+    const results = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) results.push(...getAllPhpFiles(fullPath));
+        else if (entry.isFile() && entry.name.endsWith('.php')) results.push(fullPath);
+    }
+    return results;
+}
+
+function reviewGeneratedTheme(themeDir) {
+    const critical = [];
+    const important = [];
+    const minor = [];
+
+    // style.css: campos obligatorios
+    const styleCssFile = path.join(themeDir, 'style.css');
+    if (fs.existsSync(styleCssFile)) {
+        const css = fs.readFileSync(styleCssFile, 'utf8');
+        for (const field of ['Theme Name', 'Version', 'Author', 'Text Domain']) {
+            if (!new RegExp(`^${field}:`, 'm').test(css)) {
+                critical.push(`style.css: falta campo obligatorio "${field}"`);
+            }
+        }
+        if (!/^License:/m.test(css)) minor.push('style.css: falta campo "License" (recomendado)');
+        if (!/^Domain Path:/m.test(css)) minor.push('style.css: falta campo "Domain Path" (recomendado)');
+    } else {
+        critical.push('style.css: no existe');
+    }
+
+    // header.php
+    const headerFile = path.join(themeDir, 'header.php');
+    if (fs.existsSync(headerFile)) {
+        const h = fs.readFileSync(headerFile, 'utf8');
+        if (!/wp_head\s*\(\s*\)/.test(h)) critical.push('header.php: falta wp_head()');
+        if (!/wp_body_open\s*\(\s*\)/.test(h)) important.push('header.php: falta wp_body_open()');
+        if (!/DOCTYPE/i.test(h)) important.push('header.php: falta DOCTYPE');
+        if (!/language_attributes\s*\(\s*\)/.test(h)) important.push('header.php: falta language_attributes()');
+    } else {
+        critical.push('header.php: no existe');
+    }
+
+    // footer.php
+    const footerFile = path.join(themeDir, 'footer.php');
+    if (fs.existsSync(footerFile)) {
+        const f = fs.readFileSync(footerFile, 'utf8');
+        if (!/wp_footer\s*\(\s*\)/.test(f)) critical.push('footer.php: falta wp_footer()');
+    } else {
+        critical.push('footer.php: no existe');
+    }
+
+    // functions.php
+    const functionsFile = path.join(themeDir, 'functions.php');
+    if (fs.existsSync(functionsFile)) {
+        const fn = fs.readFileSync(functionsFile, 'utf8');
+        if (!/wp_enqueue_scripts/.test(fn)) critical.push('functions.php: falta hook wp_enqueue_scripts');
+        if (!/after_setup_theme/.test(fn)) critical.push('functions.php: falta hook after_setup_theme');
+    } else {
+        critical.push('functions.php: no existe');
+    }
+
+    // templates: get_header / get_footer
+    const templateFiles = ['index.php', 'front-page.php', 'page.php', '404.php', 'archive.php', 'search.php', 'single.php'];
+    for (const tpl of templateFiles) {
+        const tplPath = path.join(themeDir, tpl);
+        if (!fs.existsSync(tplPath)) continue;
+        const content = fs.readFileSync(tplPath, 'utf8');
+        if (!/get_header\s*\(/.test(content)) important.push(`${tpl}: falta get_header()`);
+        if (!/get_footer\s*\(/.test(content)) important.push(`${tpl}: falta get_footer()`);
+    }
+
+    // page-{slug}.php generados dinámicamente
+    for (const entry of fs.readdirSync(themeDir)) {
+        if (/^page-.+\.php$/.test(entry)) {
+            const content = fs.readFileSync(path.join(themeDir, entry), 'utf8');
+            if (!/get_header\s*\(/.test(content)) important.push(`${entry}: falta get_header()`);
+            if (!/get_footer\s*\(/.test(content)) important.push(`${entry}: falta get_footer()`);
+        }
+    }
+
+    // ABSPATH en todos los PHP (confirmación post-inyección)
+    for (const phpFile of getAllPhpFiles(themeDir)) {
+        const content = fs.readFileSync(phpFile, 'utf8');
+        if (!/defined\s*\(\s*['"]ABSPATH['"]\s*\)/.test(content)) {
+            critical.push(`${path.relative(themeDir, phpFile).replace(/\\/g, '/')}: falta check ABSPATH`);
+        }
+    }
+
+    return { critical, important, minor };
+}
 
 const clientName = process.argv[2];
 if (!clientName) {
@@ -58,7 +290,7 @@ console.log(`\n🚀 Iniciando creación de tema para: ${clientName} usando model
 
 // 1. Copiar el tema base
 fse.copySync(baseThemeDir, newThemeDir, {
-    filter: (src, dest) => {
+    filter: (src, _dest) => {
         const relPath = path.relative(baseThemeDir, src);
         if (relPath.includes('.git') || relPath.includes('.DS_Store')) return false;
         return true;
@@ -105,20 +337,20 @@ for (const file of htmlFiles) {
     console.log(`  -> Procesando: ${file}`);
 
     // Extraer etiquetas <style> completas
-    html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
+    html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_match, p1) => {
         cssRules.push(`/* Estilos extraídos de <style> en ${file} */`);
         cssRules.push(p1.trim());
         return '';
     });
 
     // Extraer estilos inline (style="...")
-    html = html.replace(/<([a-zA-Z0-9\-]+)([^>]*?)\bstyle\s*=\s*(["'])([\s\S]*?)\3([^>]*?)>/gi, (match, tagName, beforeStyle, quote, styleContent, afterStyle) => {
+    html = html.replace(/<([a-zA-Z0-9\-]+)([^>]*?)\bstyle\s*=\s*(["'])([\s\S]*?)\3([^>]*?)>/gi, (_match, tagName, beforeStyle, _quote, styleContent, afterStyle) => {
         let className = `tc-inline-${folderName}-${styleCounter++}`;
         cssRules.push(`/* Extraído de ${file} */\n.${className} { ${styleContent} }`);
 
         let restOfTag = beforeStyle + afterStyle;
         if (/class\s*=\s*["']/i.test(restOfTag)) {
-            restOfTag = restOfTag.replace(/class\s*=\s*(["'])(.*?)\1/i, (matchCls, q, existingClasses) => {
+            restOfTag = restOfTag.replace(/class\s*=\s*(["'])(.*?)\1/i, (_matchCls, q, existingClasses) => {
                 let classes = existingClasses.trim();
                 return classes ? `class=${q}${classes} ${className}${q}` : `class=${q}${className}${q}`;
             });
@@ -127,6 +359,17 @@ for (const file of htmlFiles) {
         }
         return `<${tagName}${restOfTag}>`;
     });
+
+    // Detectar, copiar y reescribir assets externos (CSS, JS, imágenes, fuentes, etc.)
+    const htmlAssets = collectHtmlAssets(html);
+    if (htmlAssets.length > 0) {
+        const copiedAssets = copyExternalAssets(htmlAssets, inputDir, newThemeDir);
+        if (copiedAssets.length > 0) {
+            console.log(`    📦 Copiados ${copiedAssets.length} archivo(s) de assets externos.`);
+            html = rewriteHtmlAssetPaths(html, copiedAssets);
+            console.log(`    🔗 Rutas de assets reescritas con get_template_directory_uri().`);
+        }
+    }
 
     let headContent = '';
     let headerContent = '';
@@ -212,6 +455,13 @@ for (const file of htmlFiles) {
   <?php wp_head(); ?>
 </head>`;
             console.log('    ⚠️ No se encontró <head> en el HTML. Se generó un head de fallback con wp_head().');
+        } else {
+            // Inyectar language_attributes() en el tag <html> si no está presente
+            if (/<html(?![^>]*language_attributes)/i.test(headContent)) {
+                headContent = headContent.replace(/<html([^>]*)>/i, (_m, attrs) => {
+                    return `<html${attrs} <?php language_attributes(); ?>>`;
+                });
+            }
         }
 
         // FIX #4: Fallback header content — if no <body>/<nav>/<header> was found
@@ -220,8 +470,10 @@ for (const file of htmlFiles) {
             console.log('    ⚠️ No se encontró <body>/<header>/<nav>. Se generó body tag de fallback.');
         }
 
-        fs.writeFileSync(globalHeaderPath, headContent + '\n' + headerContent);
-        fs.writeFileSync(globalFooterPath, footerContent);
+        // Prefixar ABSPATH guard (header.php y footer.php son HTML, no empiezan con <?php)
+        const abspathGuardInline = `<?php if (!defined('ABSPATH')) { exit; } ?>\n`;
+        fs.writeFileSync(globalHeaderPath, abspathGuardInline + headContent + '\n' + headerContent);
+        fs.writeFileSync(globalFooterPath, abspathGuardInline + footerContent);
         console.log('    ✔️ Creados header.php y footer.php globales.');
         isFirstFile = false;
     }
@@ -432,6 +684,86 @@ ${phpPagesArray}
 fs.writeFileSync(autoSetupPath, autoSetupContent);
 console.log('    ✔️ Creado auto-setup.php con fallback admin_init y wp_update_post robusto.');
 
-console.log(`\n✅ Proceso completado exitosamente.`);
-console.log(`   El nuevo tema se encuentra en: ${newThemeDir}`);
-console.log(`   Una vez activado el tema, revisá los logs en wp-content/theme-setup-log.txt`);
+// 6. Inyectar ABSPATH en todos los archivos PHP del tema generado
+console.log(`\n🔒 Verificando protección ABSPATH en archivos PHP...`);
+let abspathInjected = 0;
+for (const phpFile of getAllPhpFiles(newThemeDir)) {
+    let content = fs.readFileSync(phpFile, 'utf8');
+    if (!/defined\s*\(\s*['"]ABSPATH['"]\s*\)/.test(content)) {
+        // Si el archivo comienza con <?php, inyectar después del tag de apertura
+        if (/^\s*<\?php/i.test(content)) {
+            content = content.replace(/^(\s*<\?php[^\n]*\n)/i, `$1if (!defined('ABSPATH')) { exit; }\n\n`);
+        } else {
+            // El archivo es HTML puro (ej. header.php, footer.php) — prepend un bloque PHP inline
+            content = `<?php if (!defined('ABSPATH')) { exit; } ?>\n` + content;
+        }
+        fs.writeFileSync(phpFile, content);
+        abspathInjected++;
+    }
+}
+if (abspathInjected > 0) {
+    console.log(`   🔐 ABSPATH guard inyectado en ${abspathInjected} archivo(s) PHP.`);
+} else {
+    console.log(`   ✔️ Todos los archivos PHP ya tenían protección ABSPATH.`);
+}
+
+// 7. Revisión de calidad del tema generado
+console.log(`\n🔍 Revisando calidad del tema generado...`);
+const review = reviewGeneratedTheme(newThemeDir);
+
+if (review.critical.length > 0) {
+    console.log(`\n   ❌ CRÍTICOS (${review.critical.length}):`);
+    for (const issue of review.critical) console.log(`      • ${issue}`);
+}
+if (review.important.length > 0) {
+    console.log(`\n   ⚠️  IMPORTANTES (${review.important.length}):`);
+    for (const issue of review.important) console.log(`      • ${issue}`);
+}
+if (review.minor.length > 0) {
+    console.log(`\n   💡 MENORES (${review.minor.length}):`);
+    for (const issue of review.minor) console.log(`      • ${issue}`);
+}
+
+const reviewPassed = review.critical.length === 0;
+
+if (!reviewPassed) {
+    console.log(`\n   ❌ Revisión fallida: hay problemas críticos. El tema NO se comprimirá.`);
+    console.log(`\n✅ Proceso completado con advertencias.`);
+    console.log(`   El tema sin comprimir está en: ${newThemeDir}`);
+    console.log(`   Una vez activado el tema, revisá los logs en wp-content/theme-setup-log.txt`);
+    process.exit(0);
+}
+
+if (review.important.length === 0 && review.minor.length === 0) {
+    console.log(`\n   ✅ Revisión completada: Todo OK.`);
+} else {
+    console.log(`\n   ✅ Revisión completada: sin bloqueos críticos.`);
+}
+
+// 8. Comprimir el tema en .zip
+console.log(`\n📦 Comprimiendo tema...`);
+const archiver = require('archiver');
+const zipFileName = `${path.basename(newThemeDir)}.zip`;
+const zipPath = path.join(outputDir, zipFileName);
+
+const zipOutput = fs.createWriteStream(zipPath);
+const archive = archiver('zip', { zlib: { level: 9 } });
+
+zipOutput.on('close', () => {
+    const sizeMB = (archive.pointer() / 1024 / 1024).toFixed(2);
+    console.log(`   ✔️ ZIP creado: ${zipFileName} (${sizeMB} MB)`);
+    console.log(`\n✅ Proceso completado exitosamente.`);
+    console.log(`   Tema generado en:  ${newThemeDir}`);
+    console.log(`   ZIP listo para subir: ${zipPath}`);
+    console.log(`   Una vez activado el tema, revisá los logs en wp-content/theme-setup-log.txt`);
+});
+
+archive.on('error', (err) => {
+    console.error(`\n❌ Error al comprimir el tema: ${err.message}`);
+    console.log(`\n✅ Proceso completado (sin ZIP).`);
+    console.log(`   El tema está en: ${newThemeDir}`);
+});
+
+archive.pipe(zipOutput);
+archive.directory(newThemeDir, path.basename(newThemeDir));
+archive.finalize();
