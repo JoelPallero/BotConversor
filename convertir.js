@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 
 // Asegurar dependencias necesarias
 function ensureDependencies() {
-    for (const dep of ['fs-extra', 'archiver']) {
+    for (const dep of ['fs-extra', 'archiver', 'cheerio']) {
         try {
             require(dep);
         } catch (e) {
@@ -247,6 +247,530 @@ function reviewGeneratedTheme(themeDir) {
     return { critical, important, minor };
 }
 
+// ===== Generador de base Hello Trompo (modo Elementor) =====
+
+function generateHelloTrompoBase(themeDir, clientName, themeName) {
+    fse.ensureDirSync(themeDir);
+    fse.ensureDirSync(path.join(themeDir, 'assets', 'css'));
+    fse.ensureDirSync(path.join(themeDir, 'assets', 'js'));
+    fse.ensureDirSync(path.join(themeDir, 'assets', 'images'));
+    fse.ensureDirSync(path.join(themeDir, 'assets', 'fonts'));
+    fse.ensureDirSync(path.join(themeDir, 'inc'));
+
+    fs.writeFileSync(path.join(themeDir, 'style.css'),
+`/*
+Theme Name: ${themeName}
+Theme URI: https://trompoagencia.com
+Author: Trompo Agencia
+Author URI: https://trompoagencia.com
+Description: Tema personalizado para ${clientName}.
+Version: 1.0.0
+License: GNU General Public License v2 or later
+License URI: LICENSE
+Text Domain: hello-trompo
+Domain Path: /languages
+*/
+`);
+
+    fs.writeFileSync(path.join(themeDir, 'functions.php'),
+`<?php
+if (!defined('ABSPATH')) { exit; }
+
+function hello_trompo_setup() {
+    add_theme_support('automatic-feed-links');
+    add_theme_support('title-tag');
+    add_theme_support('post-thumbnails');
+    add_theme_support('html5', array('search-form', 'comment-form', 'comment-list', 'gallery', 'caption', 'script', 'style'));
+    add_theme_support('custom-logo');
+    add_theme_support('align-wide');
+}
+add_action('after_setup_theme', 'hello_trompo_setup');
+
+function hello_trompo_scripts() {
+    $theme_version = wp_get_theme()->get('Version');
+    wp_enqueue_style('hello-trompo-style', get_template_directory_uri() . '/assets/css/main.css', array(), $theme_version);
+}
+add_action('wp_enqueue_scripts', 'hello_trompo_scripts');
+
+// Incluir auto-setup si fue generado por BotConversor
+$auto_setup_file = get_template_directory() . '/inc/auto-setup.php';
+if (file_exists($auto_setup_file)) {
+    require_once $auto_setup_file;
+}
+`);
+
+    fs.writeFileSync(path.join(themeDir, 'index.php'),
+`<?php
+if (!defined('ABSPATH')) { exit; }
+get_header();
+if (have_posts()) :
+    while (have_posts()) : the_post();
+        the_content();
+    endwhile;
+endif;
+get_footer();
+`);
+
+    fs.writeFileSync(path.join(themeDir, 'assets', 'css', 'main.css'),
+`/* Estilos del tema ${themeName} */\n`);
+}
+
+// ===== Convertidor HTML → widgets nativos de Elementor =====
+
+function elId() {
+    const chars = '0123456789abcdef';
+    let id = '';
+    for (let i = 0; i < 7; i++) id += chars[Math.floor(Math.random() * chars.length)];
+    return id;
+}
+
+// Modern Elementor: container-based structure (replaces legacy section/column)
+function elContainer(elements, settings, isInner) {
+    return {
+        id: elId(),
+        elType: 'container',
+        settings: Object.assign({ content_width: 'full', flex_direction: 'column', flex_wrap: 'nowrap', content_position: 'top' }, settings || {}),
+        elements: elements || [],
+        isInner: !!isInner
+    };
+}
+
+function elWidget(type, settings) {
+    return { id: elId(), elType: 'widget', widgetType: type, settings: settings || {}, elements: [], isInner: false };
+}
+
+const COLUMN_CLS = /\bcol\b|col-[a-z0-9]|\bcolumn\b|\bgrid-item\b|\bcell\b/i;
+const ROW_CLS    = /\brow\b|\bgrid\b|\bcolumns\b/i;
+const SKIP_CLS   = /\bcursor\b|\bpreloader\b|\bloader\b|\boverlay\b|\bmodal\b|\bbackdrop\b|\boffcanvas\b/i;
+const SKIP_ID    = /^(cursor|preloader|loader|overlay|modal|sidebar)/i;
+
+function shouldSkipEl($, el) {
+    const cls = $(el).attr('class') || '';
+    const id  = $(el).attr('id') || '';
+    return SKIP_CLS.test(cls) || SKIP_ID.test(id);
+}
+
+// ---- CSS utilities ----
+
+function parseCSSForElementor(cssText) {
+    const vars  = {};
+    const rules = {};
+
+    const rootM = cssText.match(/:root\s*\{([^}]+)\}/);
+    if (rootM) {
+        for (const line of rootM[1].split(';')) {
+            const m = line.match(/--([a-zA-Z0-9-]+)\s*:\s*(.+)/);
+            if (m) vars[`--${m[1].trim()}`] = m[2].trim();
+        }
+    }
+
+    const ruleRe = /([^{}]+)\{([^}]+)\}/g;
+    let m;
+    while ((m = ruleRe.exec(cssText)) !== null) {
+        const props = {};
+        for (const decl of m[2].split(';')) {
+            const idx = decl.indexOf(':');
+            if (idx === -1) continue;
+            const prop = decl.substring(0, idx).trim();
+            const val  = decl.substring(idx + 1).trim();
+            if (prop) props[prop] = val;
+        }
+        for (const sel of m[1].trim().split(',')) {
+            const s = sel.trim();
+            if (!s || s === ':root') continue;
+            if (!rules[s]) rules[s] = {};
+            Object.assign(rules[s], props);
+        }
+    }
+
+    return { vars, rules };
+}
+
+function resolveVar(value, vars) {
+    if (!value || !value.includes('var(')) return value;
+    return value.replace(/var\(([^,)]+)(?:,([^)]+))?\)/g, (_, name, fallback) => {
+        const v = vars[name.trim()];
+        if (v) return resolveVar(v, vars);
+        return fallback ? fallback.trim() : '';
+    });
+}
+
+function getElStyles($el, cssData) {
+    if (!cssData) return {};
+    const { vars, rules } = cssData;
+    const merged = {};
+    const tag = ($el[0] && $el[0].tagName) ? $el[0].tagName.toLowerCase() : '';
+    const cls = ($el.attr('class') || '').split(/\s+/).filter(Boolean);
+
+    if (rules[tag]) Object.assign(merged, rules[tag]);
+    for (const c of cls) {
+        if (rules[`.${c}`]) Object.assign(merged, rules[`.${c}`]);
+    }
+    for (const [k, v] of Object.entries(merged)) {
+        merged[k] = resolveVar(v, vars);
+    }
+    return merged;
+}
+
+function parseSizeVal(val) {
+    if (!val) return null;
+    const clampM = val.match(/clamp\([^,]+,\s*([^,]+),\s*[^)]+\)/);
+    if (clampM) val = clampM[1].trim();
+    const match = val.match(/^([\d.]+)(px|em|rem|vw|vh|%)?$/);
+    if (!match) return null;
+    const size = parseFloat(match[1]);
+    const unit = match[2] === 'rem' ? 'em' : (match[2] || 'px');
+    return { unit, size: unit === 'px' ? Math.round(size) : size, sizes: [] };
+}
+
+function firstFontFamily(val) {
+    if (!val) return null;
+    return val.split(',')[0].trim().replace(/['"]/g, '');
+}
+
+// Applies CSS typography/color to an Elementor settings object.
+// prefix: 'typography_' for widgets, 'title_typography_' / 'description_typography_' for icon-box/image-box
+function applyTypoWithPrefix(styles, settings, prefix, colorKey) {
+    if (styles['color'] && colorKey) settings[colorKey] = styles['color'];
+    if (styles['font-family']) {
+        settings[prefix + 'typography'] = 'custom';
+        settings[prefix + 'font_family'] = firstFontFamily(styles['font-family']);
+    }
+    const fsz = parseSizeVal(styles['font-size']);
+    if (fsz) {
+        settings[prefix + 'typography'] = 'custom';
+        settings[prefix + 'font_size']        = fsz;
+        settings[prefix + 'font_size_tablet'] = fsz;
+        settings[prefix + 'font_size_mobile'] = fsz;
+    }
+    if (styles['font-weight']) {
+        settings[prefix + 'typography'] = 'custom';
+        settings[prefix + 'font_weight'] = styles['font-weight'];
+    }
+    if (styles['font-style'] && styles['font-style'] !== 'normal') {
+        settings[prefix + 'typography'] = 'custom';
+        settings[prefix + 'font_style'] = styles['font-style'];
+    }
+    if (styles['text-transform'] && styles['text-transform'] !== 'none') {
+        settings[prefix + 'typography'] = 'custom';
+        settings[prefix + 'text_transform'] = styles['text-transform'];
+    }
+    const ls = parseSizeVal(styles['letter-spacing']);
+    if (ls) { settings[prefix + 'typography'] = 'custom'; settings[prefix + 'letter_spacing'] = ls; }
+    const lh = parseSizeVal(styles['line-height']);
+    if (lh) { settings[prefix + 'typography'] = 'custom'; settings[prefix + 'line_height'] = lh; }
+}
+
+function applyTypo(styles, settings, colorKey) {
+    applyTypoWithPrefix(styles, settings, 'typography_', colorKey || 'text_color');
+}
+
+function getContainerBgSettings(styles) {
+    const s = {};
+    if (styles['background-color']) {
+        s['background_color'] = styles['background-color'];
+    } else if (styles['background']) {
+        const bgCol = styles['background'].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/);
+        if (bgCol) s['background_color'] = bgCol[0];
+    }
+    const pt = parseSizeVal(styles['padding-top']    || '');
+    const pb = parseSizeVal(styles['padding-bottom'] || '');
+    const pl = parseSizeVal(styles['padding-left']   || '');
+    const pr = parseSizeVal(styles['padding-right']  || '');
+    if (styles['padding'] && !pt && !pb) {
+        const pv = parseSizeVal(styles['padding'].split(' ')[0]);
+        if (pv) s['padding'] = { unit: pv.unit, top: String(pv.size), right: String(pv.size), bottom: String(pv.size), left: String(pv.size), isLinked: true };
+    } else if (pt || pb || pl || pr) {
+        s['padding'] = { unit: 'px', top: String(pt ? pt.size : 0), right: String(pr ? pr.size : 0), bottom: String(pb ? pb.size : 0), left: String(pl ? pl.size : 0), isLinked: false };
+    }
+    if (styles['border-radius']) {
+        const r = parseSizeVal(styles['border-radius'].split(' ')[0]);
+        if (r) s['border_radius'] = { unit: r.unit, top: String(r.size), right: String(r.size), bottom: String(r.size), left: String(r.size), isLinked: true };
+    }
+    return s;
+}
+
+// ---- Layout helpers ----
+
+function drillDown($, el) {
+    let cur = el;
+    for (let i = 0; i < 8; i++) {
+        const children = $(cur).children().toArray().filter(c => c.type === 'tag');
+        if (children.length !== 1) break;
+        const child = children[0];
+        const tag = child.tagName ? child.tagName.toLowerCase() : '';
+        const cls = $(child).attr('class') || '';
+        if (['div', 'main', 'article'].includes(tag) && !COLUMN_CLS.test(cls)) {
+            cur = child;
+        } else break;
+    }
+    return cur;
+}
+
+function detectCols($, el) {
+    const children = $(el).children().toArray().filter(c => c.type === 'tag');
+    if (children.length < 2) return [];
+    const colKids = children.filter(c => COLUMN_CLS.test($(c).attr('class') || ''));
+    if (colKids.length >= 2) return colKids;
+    const rowKid = children.find(c => ROW_CLS.test($(c).attr('class') || ''));
+    if (rowKid) {
+        const rowCols = $(rowKid).children().toArray().filter(c => c.type === 'tag');
+        if (rowCols.length >= 2) return rowCols;
+    }
+    return [];
+}
+
+// ---- Widget / section builders ----
+
+function nodeToWidget($, el, cssData) {
+    if (!el || el.type !== 'tag') return null;
+    if (shouldSkipEl($, el)) return null;
+    const $el  = $(el);
+    const tag  = el.tagName ? el.tagName.toLowerCase() : '';
+    const inner = ($el.html() || '').trim();
+    const text  = $el.text().trim();
+    const cls   = $el.attr('class') || '';
+    if (!inner && !text) return null;
+
+    const styles = getElStyles($el, cssData);
+
+    function getAlign() {
+        if (styles['text-align']) return styles['text-align'];
+        if (/text-center|center-align|\bcenter\b/i.test(cls)) return 'center';
+        if (/text-right|right-align|\bright\b/i.test(cls)) return 'right';
+        return '';
+    }
+
+    // Headings
+    if (/^h[1-6]$/.test(tag)) {
+        const s = { title: inner, header_size: tag };
+        const al = getAlign(); if (al) s.align = al;
+        applyTypo(styles, s, 'title_color');
+        return elWidget('heading', s);
+    }
+
+    // Paragraph
+    if (tag === 'p') {
+        const s = { editor: inner };
+        const al = getAlign(); if (al) s.align = al;
+        applyTypo(styles, s, 'text_color');
+        return elWidget('text-editor', s);
+    }
+
+    // Image
+    if (tag === 'img') {
+        const s = { image: { url: $el.attr('src') || '', alt: $el.attr('alt') || '', id: '' } };
+        const al = getAlign(); if (al) s.align = al;
+        return elWidget('image', s);
+    }
+
+    // Button / CTA link
+    if (tag === 'button' || (tag === 'a' && /\bbtn\b|\bbutton\b|\bcta\b/i.test(cls))) {
+        const s = { text: text || 'Ver más', link: { url: $el.attr('href') || '#', is_external: '', nofollow: '' } };
+        const al = getAlign(); if (al) s.align = al;
+        applyTypo(styles, s, 'button_text_color');
+        return elWidget('button', s);
+    }
+
+    // Divider
+    if (tag === 'hr') return elWidget('divider', {});
+
+    // Lists / blockquote → rich text
+    if (['ul', 'ol', 'blockquote'].includes(tag)) {
+        const s = { editor: $.html(el) };
+        applyTypo(styles, s, 'text_color');
+        return elWidget('text-editor', s);
+    }
+
+    // Container elements
+    if (['div', 'section', 'article', 'aside', 'figure', 'main', 'span'].includes(tag)) {
+        const kids = $(el).children().toArray().filter(c => c.type === 'tag');
+
+        // Single img wrapper → image widget
+        if (kids.length === 1 && kids[0].tagName && kids[0].tagName.toLowerCase() === 'img') {
+            const $img = $(kids[0]);
+            const s = { image: { url: $img.attr('src') || '', alt: $img.attr('alt') || '', id: '' } };
+            const al = getAlign(); if (al) s.align = al;
+            return elWidget('image', s);
+        }
+
+        // figure con img → image con caption
+        if (tag === 'figure') {
+            const $img = $el.find('img').first();
+            if ($img.length) {
+                return elWidget('image', {
+                    image: { url: $img.attr('src') || '', alt: $img.attr('alt') || '', id: '' },
+                    caption: $el.find('figcaption').first().text().trim()
+                });
+            }
+        }
+
+        const $hd = $el.find('h1,h2,h3,h4,h5,h6').first();
+        const $im = $el.find('img').first();
+        const $pa = $el.find('p').first();
+        const $ic = $el.find('i[class*="icon"],i[class*="fa"],svg,.icon,.fas,.far,.fal,.fab').first();
+
+        // Icon-box pattern: icon/svg + heading + (optional) paragraph
+        if ($hd.length && $ic.length && !$im.length) {
+            const hSt = getElStyles($hd, cssData);
+            const pSt = getElStyles($pa, cssData);
+            const s = {
+                title_text: $hd.text().trim(),
+                description_text: $pa.html() || '',
+                position: 'top',
+                selected_icon: { value: $ic.attr('class') || '', library: 'fa-solid' }
+            };
+            applyTypoWithPrefix(hSt, s, 'title_typography_', 'title_color');
+            applyTypoWithPrefix(pSt, s, 'description_typography_', 'description_color');
+            return elWidget('icon-box', s);
+        }
+
+        // Image-box: img + heading + (optional) paragraph
+        if ($im.length && $hd.length) {
+            const hSt = getElStyles($hd, cssData);
+            const pSt = getElStyles($pa, cssData);
+            const s = {
+                image: { url: $im.attr('src') || '', alt: $im.attr('alt') || '', id: '' },
+                title_text: $hd.text().trim(),
+                description_text: $pa.html() || ''
+            };
+            applyTypoWithPrefix(hSt, s, 'title_typography_', 'title_color');
+            applyTypoWithPrefix(pSt, s, 'description_typography_', 'description_color');
+            return elWidget('image-box', s);
+        }
+
+        // All simple children → let caller process individually
+        const SIMPLE_TAGS = /^(h[1-6]|p|img|hr|ul|ol|a|button|span|br|strong|em|blockquote)$/;
+        const allSimple = kids.every(c => SIMPLE_TAGS.test(c.tagName ? c.tagName.toLowerCase() : ''));
+        if (allSimple && kids.length > 0 && kids.length <= 8) return null;
+
+        // Complex → html fallback
+        return elWidget('html', { html: $.html(el) });
+    }
+
+    return elWidget('html', { html: $.html(el) });
+}
+
+function extractWidgets($, el, cssData) {
+    const kids = $(el).children().toArray().filter(c => c.type === 'tag');
+    if (kids.length === 0) {
+        const t = $(el).text().trim();
+        return t ? [elWidget('text-editor', { editor: t })] : [];
+    }
+    const widgets = [];
+    for (const kid of kids) {
+        if (shouldSkipEl($, kid)) continue;
+        const tag = kid.tagName ? kid.tagName.toLowerCase() : '';
+
+        if (/^(h[1-6]|p|img|hr|ul|ol|blockquote|button)$/.test(tag)) {
+            const w = nodeToWidget($, kid, cssData); if (w) widgets.push(w); continue;
+        }
+        if (tag === 'a' && /\bbtn\b|\bbutton\b|\bcta\b/i.test($(kid).attr('class') || '')) {
+            const w = nodeToWidget($, kid, cssData); if (w) widgets.push(w); continue;
+        }
+        if (['div', 'article', 'aside', 'figure', 'section'].includes(tag)) {
+            const w = nodeToWidget($, kid, cssData);
+            if (w === null) {
+                const subKids = $(kid).children().toArray().filter(c => c.type === 'tag');
+                for (const sk of subKids) {
+                    if (shouldSkipEl($, sk)) continue;
+                    const sw = nodeToWidget($, sk, cssData); if (sw) widgets.push(sw);
+                }
+            } else if (w) {
+                widgets.push(w);
+            }
+            continue;
+        }
+        const w = nodeToWidget($, kid, cssData); if (w) widgets.push(w);
+    }
+    return widgets;
+}
+
+function buildSection($, el, cssData) {
+    if (!el || el.type !== 'tag') return null;
+    if (shouldSkipEl($, el)) return null;
+    const content = drillDown($, el);
+    const $c      = $(content);
+    if (!$c.text().trim() && !($c.html() || '').trim()) return null;
+
+    const sStyles = getElStyles($c, cssData);
+    const bgSet   = getContainerBgSettings(sStyles);
+
+    // Multi-column → Elementor grid container
+    const colEls = detectCols($, content);
+    if (colEls.length >= 2) {
+        const frac = Array(colEls.length).fill('1fr').join(' ');
+        const innerCols = colEls.map(c => {
+            const colSt = getElStyles($(c), cssData);
+            const colBg = getContainerBgSettings(colSt);
+            return elContainer(extractWidgets($, drillDown($, c), cssData), colBg, true);
+        });
+        return elContainer(innerCols, Object.assign({
+            container_type: 'grid',
+            grid_columns_grid: { unit: 'custom', size: frac, sizes: [] }
+        }, bgSet));
+    }
+
+    // Nested row element
+    const rowEl = $c.children().toArray().find(c => ROW_CLS.test($(c).attr('class') || ''));
+    if (rowEl) {
+        const rowCols = $(rowEl).children().toArray().filter(c => c.type === 'tag');
+        if (rowCols.length >= 2) {
+            const frac = Array(rowCols.length).fill('1fr').join(' ');
+            const innerCols = rowCols.map(c => elContainer(extractWidgets($, drillDown($, c), cssData), {}, true));
+            return elContainer(innerCols, Object.assign({
+                container_type: 'grid',
+                grid_columns_grid: { unit: 'custom', size: frac, sizes: [] }
+            }, bgSet));
+        }
+    }
+
+    // Single column
+    const widgets = extractWidgets($, content, cssData);
+    if (widgets.length === 0) {
+        const inner = ($c.html() || '').trim();
+        return inner ? elContainer([elContainer([elWidget('html', { html: inner })], {}, true)], bgSet) : null;
+    }
+    return elContainer([elContainer(widgets, {}, true)], bgSet);
+}
+
+function convertHtmlToElementorData(html, cssText) {
+    const cheerio = require('cheerio');
+    const cssData = cssText ? parseCSSForElementor(cssText) : null;
+    const $ = cheerio.load('<div id="el-root">' + html + '</div>', { decodeEntities: false });
+    const sections = [];
+    const BLOCK = ['section', 'article', 'aside', 'main', 'div', 'figure'];
+
+    $('#el-root').children().each(function () {
+        const el = this;
+        if (el.type !== 'tag') return;
+        const tag = el.tagName ? el.tagName.toLowerCase() : '';
+        if (['nav', 'header', 'footer'].includes(tag)) return;
+        if (shouldSkipEl($, el)) return;
+
+        if (BLOCK.includes(tag)) {
+            const s = buildSection($, el, cssData);
+            if (s) sections.push(s);
+        } else if (/^h[1-6]$/.test(tag) || ['p', 'ul', 'ol', 'hr', 'blockquote'].includes(tag)) {
+            const w = nodeToWidget($, el, cssData);
+            if (w) sections.push(elContainer([elContainer([w], {}, true)]));
+        } else {
+            const ih = $.html(el);
+            if (ih.trim()) sections.push(elContainer([elContainer([elWidget('html', { html: ih })], {}, true)]));
+        }
+    });
+
+    if (sections.length === 0) sections.push(elContainer([elContainer([elWidget('html', { html })], {}, true)]));
+    return sections;
+}
+
+function countElWidgets(sections) {
+    let n = 0;
+    function walk(els) { for (const e of els) { if (e.elType === 'widget') n++; if (e.elements) walk(e.elements); } }
+    walk(sections);
+    return n;
+}
+
 const clientName = process.argv[2];
 if (!clientName) {
     console.error('\n❌ Error: Debes proporcionar el nombre del cliente. Ejemplo: node convertir.js "Mi Cliente"');
@@ -257,7 +781,10 @@ const botDir = __dirname;
 const inputDir = path.join(botDir, 'input_html');
 
 // Permitir elegir el modelo, por defecto 'Trompo-Theme'
-const modelName = process.argv[3] || 'Trompo-Theme';
+// Modo especial: si se pasa 'elementor' como tercer argumento, se genera un tema compatible con Elementor
+const rawModelArg = process.argv[3] || 'Trompo-Theme';
+const isElementorMode = rawModelArg.toLowerCase() === 'elementor';
+const modelName = isElementorMode ? 'Hello-Trompo' : rawModelArg;
 const baseThemeDir = path.join(botDir, 'Models', modelName);
 
 const folderName = clientName
@@ -270,7 +797,7 @@ const outputDir = path.join(botDir, 'output');
 fse.ensureDirSync(outputDir);
 const newThemeDir = path.join(outputDir, `${modelName}-${folderName}`);
 
-if (!fs.existsSync(baseThemeDir)) {
+if (!isElementorMode && !fs.existsSync(baseThemeDir)) {
     console.error(`\n❌ Error: No se encontró el tema base en ${baseThemeDir}\n`);
     process.exit(1);
 }
@@ -286,39 +813,43 @@ if (htmlFiles.length === 0) {
     process.exit(1);
 }
 
-console.log(`\n🚀 Iniciando creación de tema para: ${clientName} usando modelo: ${modelName}`);
+console.log(`\n🚀 Iniciando creación de tema para: ${clientName} usando modelo: ${modelName}${isElementorMode ? ' (modo Elementor)' : ''}`);
 
-// 1. Copiar el tema base
-fse.copySync(baseThemeDir, newThemeDir, {
-    filter: (src, _dest) => {
-        const relPath = path.relative(baseThemeDir, src);
-        if (relPath.includes('.git') || relPath.includes('.DS_Store')) return false;
-        return true;
+// 1. Copiar el tema base o generar base Hello Trompo (modo Elementor)
+if (isElementorMode) {
+    generateHelloTrompoBase(newThemeDir, clientName, modelName);
+    console.log('📝 Base Hello Trompo generada para Elementor.');
+} else {
+    fse.copySync(baseThemeDir, newThemeDir, {
+        filter: (src, _dest) => {
+            const relPath = path.relative(baseThemeDir, src);
+            if (relPath.includes('.git') || relPath.includes('.DS_Store')) return false;
+            return true;
+        }
+    });
+
+    // 2. Modificar style.css
+    const styleCssPath = path.join(newThemeDir, 'style.css');
+    if (fs.existsSync(styleCssPath)) {
+        let styleCss = fs.readFileSync(styleCssPath, 'utf8');
+        styleCss = styleCss.replace(/^Description:.*$/m, `Description: Tema personalizado para ${clientName}.`);
+        fs.writeFileSync(styleCssPath, styleCss);
+        console.log('📝 Metadatos del tema actualizados (style.css).');
     }
-});
 
-// 2. Modificar style.css
-const styleCssPath = path.join(newThemeDir, 'style.css');
-if (fs.existsSync(styleCssPath)) {
-    let styleCss = fs.readFileSync(styleCssPath, 'utf8');
-    styleCss = styleCss.replace(/^Description:.*$/m, `Description: Tema personalizado para ${clientName}.`);
-    fs.writeFileSync(styleCssPath, styleCss);
-    console.log('📝 Metadatos del tema actualizados (style.css).');
-}
+    // 2b. Asegurar que functions.php incluya auto-setup.php
+    const functionsPath = path.join(newThemeDir, 'functions.php');
+    if (fs.existsSync(functionsPath)) {
+        let functionsContent = fs.readFileSync(functionsPath, 'utf8');
 
-// 2b. Asegurar que functions.php incluya auto-setup.php
-const functionsPath = path.join(newThemeDir, 'functions.php');
-if (fs.existsSync(functionsPath)) {
-    let functionsContent = fs.readFileSync(functionsPath, 'utf8');
-
-    // Solo inyectar si NO existe ya un require de auto-setup
-    if (!/require_once\s+\$auto_setup_file/.test(functionsContent)) {
-        const autoSetupSnippet = `\n// Incluir auto-setup si fue generado por BotConversor\n$auto_setup_file = get_template_directory() . '/inc/auto-setup.php';\n\nif (file_exists($auto_setup_file)) {\n    require_once $auto_setup_file;\n}\n`;
-        functionsContent = functionsContent.trimEnd() + '\n' + autoSetupSnippet;
-        fs.writeFileSync(functionsPath, functionsContent);
-        console.log('📝 functions.php actualizado con require de auto-setup.php.');
-    } else {
-        console.log('📝 functions.php ya contiene require de auto-setup.php. OK.');
+        if (!/require_once\s+\$auto_setup_file/.test(functionsContent)) {
+            const autoSetupSnippet = `\n// Incluir auto-setup si fue generado por BotConversor\n$auto_setup_file = get_template_directory() . '/inc/auto-setup.php';\n\nif (file_exists($auto_setup_file)) {\n    require_once $auto_setup_file;\n}\n`;
+            functionsContent = functionsContent.trimEnd() + '\n' + autoSetupSnippet;
+            fs.writeFileSync(functionsPath, functionsContent);
+            console.log('📝 functions.php actualizado con require de auto-setup.php.');
+        } else {
+            console.log('📝 functions.php ya contiene require de auto-setup.php. OK.');
+        }
     }
 }
 
@@ -337,9 +868,11 @@ for (const file of htmlFiles) {
     console.log(`  -> Procesando: ${file}`);
 
     // Extraer etiquetas <style> completas
+    let pageCssText = '';
     html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_match, p1) => {
         cssRules.push(`/* Estilos extraídos de <style> en ${file} */`);
         cssRules.push(p1.trim());
+        pageCssText += p1.trim() + '\n';
         return '';
     });
 
@@ -488,34 +1021,63 @@ for (const file of htmlFiles) {
     // FIX #3: Home detection — flexible regex supporting compound names
     let isHome = htmlFiles.length === 1 || /(^|[-_\s])(home|index|inicio|frontpage|front-page)([-_\s]|$)/i.test(normalizedName);
 
-    // Escapar el contenido HTML para que entre correctamente como string en el auto-setup.php
     // Usamos base64 para evitar todos los problemas de escape en strings PHP
     let encodedContent = Buffer.from(bodyContent).toString('base64');
+
+    // En modo Elementor: convertir HTML a widgets nativos
+    let elementorB64 = null;
+    if (isElementorMode) {
+        try {
+            const elData = convertHtmlToElementorData(bodyContent, pageCssText);
+            elementorB64 = Buffer.from(JSON.stringify(elData)).toString('base64');
+            console.log(`    🔧 Convertido a ${countElWidgets(elData)} widgets de Elementor.`);
+        } catch (e) {
+            console.warn(`    ⚠️ Error convirtiendo a Elementor: ${e.message}. Se usará HTML widget de fallback.`);
+            const fallback = [elContainer([elContainer([elWidget('html', { html: bodyContent })], {}, true)])];
+            elementorB64 = Buffer.from(JSON.stringify(fallback)).toString('base64');
+        }
+    }
 
     let slug;
     if (isHome) {
         slug = 'inicio';
-        createdPages.push({ slug: slug, title: 'Inicio', is_home: true, content_b64: encodedContent, bodyContent: bodyContent });
+        createdPages.push({ slug: slug, title: 'Inicio', is_home: true, content_b64: encodedContent, bodyContent: bodyContent, elementor_b64: elementorB64 });
         console.log(`    ✔️ Identificada como página de Inicio.`);
     } else {
         slug = normalizedName.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        createdPages.push({ slug: slug, title: cleanName, is_home: false, content_b64: encodedContent, bodyContent: bodyContent });
+        createdPages.push({ slug: slug, title: cleanName, is_home: false, content_b64: encodedContent, bodyContent: bodyContent, elementor_b64: elementorB64 });
         console.log(`    ✔️ Identificada como página interna: ${cleanName}`);
     }
 }
 
-// 3. Generar REAL PHP templates desde el HTML (no solo the_content())
-console.log(`\n⚙️  Generando templates PHP reales...`);
+// 3. Generar PHP templates
+console.log(`\n⚙️  Generando templates PHP...`);
 
-for (const page of createdPages) {
-    let templateFileName;
-    if (page.is_home) {
-        templateFileName = 'front-page.php';
-    } else {
-        templateFileName = `page-${page.slug}.php`;
-    }
+if (isElementorMode) {
+    // Modo Elementor: templates mínimos — el contenido lo gestiona Elementor vía _elementor_data meta
+    const elementorTpl = `<?php
+if (!defined('ABSPATH')) { exit; }
+get_header();
+if (have_posts()) :
+    while (have_posts()) : the_post();
+        the_content();
+    endwhile;
+endif;
+get_footer();
+`;
+    fs.writeFileSync(path.join(newThemeDir, 'front-page.php'), elementorTpl);
+    fs.writeFileSync(path.join(newThemeDir, 'page.php'), elementorTpl);
+    console.log('    ✔️ Creados front-page.php y page.php mínimos para Elementor.');
+} else {
+    for (const page of createdPages) {
+        let templateFileName;
+        if (page.is_home) {
+            templateFileName = 'front-page.php';
+        } else {
+            templateFileName = `page-${page.slug}.php`;
+        }
 
-    const templateContent = `<?php
+        const templateContent = `<?php
 /**
  * Template: ${templateFileName}
  * Generado automáticamente por BotConversor para: ${page.title}
@@ -529,14 +1091,14 @@ ${page.bodyContent}
 <?php get_footer(); ?>
 `;
 
-    const templatePath = path.join(newThemeDir, templateFileName);
-    fs.writeFileSync(templatePath, templateContent);
-    console.log(`    ✔️ Creado template: ${templateFileName}`);
-}
+        const templatePath = path.join(newThemeDir, templateFileName);
+        fs.writeFileSync(templatePath, templateContent);
+        console.log(`    ✔️ Creado template: ${templateFileName}`);
+    }
 
-// Also generate a generic page.php fallback with the_content() loop
-const pageFallbackPath = path.join(newThemeDir, 'page.php');
-const pageFallbackContent = `<?php
+    // Also generate a generic page.php fallback with the_content() loop
+    const pageFallbackPath = path.join(newThemeDir, 'page.php');
+    const pageFallbackContent = `<?php
 /**
  * Fallback genérico para páginas sin template específico (page-{slug}.php)
  * Renderiza el contenido desde la base de datos de WordPress
@@ -557,8 +1119,9 @@ get_header(); ?>
 
 <?php get_footer(); ?>
 `;
-fs.writeFileSync(pageFallbackPath, pageFallbackContent);
-console.log('    ✔️ Creado page.php genérico (fallback con the_content()).');
+    fs.writeFileSync(pageFallbackPath, pageFallbackContent);
+    console.log('    ✔️ Creado page.php genérico (fallback con the_content()).');
+}
 
 // 4. Inyectar CSS si es necesario
 if (cssRules.length > 0) {
@@ -576,13 +1139,40 @@ fse.ensureDirSync(incDir);
 const autoSetupPath = path.join(incDir, 'auto-setup.php');
 
 let phpPagesArray = createdPages.map(p => {
+    if (isElementorMode) {
+        return `        array(
+            'slug'           => '${p.slug}',
+            'title'          => '${p.title}',
+            'is_home'        => ${p.is_home ? 'true' : 'false'},
+            'is_elementor'   => true,
+            'content'        => base64_decode('${p.content_b64}'),
+            'elementor_json' => base64_decode('${p.elementor_b64 || ''}')
+        )`;
+    }
     return `        array(
-            'slug'    => '${p.slug}', 
-            'title'   => '${p.title}', 
-            'is_home' => ${p.is_home ? 'true' : 'false'}, 
+            'slug'    => '${p.slug}',
+            'title'   => '${p.title}',
+            'is_home' => ${p.is_home ? 'true' : 'false'},
             'content' => base64_decode('${p.content_b64}')
         )`;
 }).join(',\n');
+
+const elementorSetupCode = isElementorMode ? `
+        // Configurar la página para ser editable con Elementor (widgets nativos)
+        if (!empty($p['is_elementor']) && !empty($p['elementor_json']) && $page_id && !is_wp_error($page_id)) {
+            $elementor_json = $p['elementor_json'];
+            // Reemplazar el placeholder de URI del tema por la URL real
+            $elementor_json = str_replace(
+                '<?php echo get_template_directory_uri(); ?>',
+                get_template_directory_uri(),
+                $elementor_json
+            );
+            update_post_meta($page_id, '_elementor_data', wp_slash($elementor_json));
+            update_post_meta($page_id, '_elementor_edit_mode', 'builder');
+            update_post_meta($page_id, '_elementor_version', '3.0.0');
+            update_post_meta($page_id, '_elementor_template_type', 'wp-page');
+            file_put_contents($log_file, "Elementor configurado para: {$p['title']}\\n", FILE_APPEND);
+        }` : '';
 
 const autoSetupContent = `<?php
 /**
@@ -658,6 +1248,8 @@ ${phpPagesArray}
                 file_put_contents($log_file, "Error actualizando {$p['slug']}: " . $update_result->get_error_message() . "\\n", FILE_APPEND);
             }
         }
+
+${elementorSetupCode}
 
         // Si es la home declarada, guardamos el ID para setearla como front-page
         if ($p['is_home'] && $page_id && !is_wp_error($page_id)) {

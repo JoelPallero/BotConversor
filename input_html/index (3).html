@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="/trompo/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Agencia digital con 10+ años acompañando marcas argentinas. Diseño, multimedia, desarrollo web, paid media y redes sociales como un sistema integrado.">
+  <title>Trompo Agencia · Marketing para marcas que mueven el negocio</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap" rel="stylesheet">
+  <link rel="preload" href="/trompo/assets/fonts/neue-haas-grotesk-display-pro-cdnfonts/NeueHaasDisplayBold.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/trompo/assets/fonts/neue-haas-grotesk-display-pro-cdnfonts/NeueHaasDisplayRoman.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="/trompo/assets/fonts/fonts.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* === SISTEMA EXACTO DE NOSOTROS / CONTACTANOS === */
+    :root {
+      --ink: #f0ede6;
+      --ink-dim: rgba(240,237,230,0.55);
+      --ink-faint: rgba(240,237,230,0.2);
+      --bg: #0a0a0a;
+      --bg2: #111111;
+      --bg3: #161616;
+      --gold: #E8B73A;
+      --pink: #E8458F;
+      --border: rgba(240,237,230,0.08);
+      --border-strong: rgba(240,237,230,0.13);
+      --green: #4ADE80;
+      --font-display: 'NeueHaasDisplayBold', 'Neue Haas Grotesk Display Pro', 'Montserrat', sans-serif;
+      --font-body: 'Montserrat', sans-serif;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --max: 1400px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    a, button { cursor: none; }
+    ::selection { background: var(--gold); color: var(--bg); }
+
+    /* CURSOR — idéntico nosotros */
+    .cursor {
+      position: fixed;
+      width: 10px; height: 10px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%,-50%);
+      mix-blend-mode: difference;
+      transition: width 0.25s var(--ease), height 0.25s var(--ease);
+    }
+    .cursor.hover { width: 48px; height: 48px; }
+    .cursor-trail {
+      position: fixed;
+      width: 32px; height: 32px;
+      border: 1px solid var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%,-50%);
+      opacity: 0.5;
+    }
+    @media (max-width: 920px) {
+      .cursor, .cursor-trail { display: none; }
+      body, a, button { cursor: auto; }
+    }
+
+    /* NAV — sistema idéntico nosotros */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 64px;
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--ink);
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-logo img { width: 130px; }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-link {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-link:hover, .nav-link.active { color: var(--ink); }
+    .nav-cta {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--gold);
+      padding: 10px 22px;
+      border-radius: 2px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { background: #f5c84a; transform: translateY(-1px); }
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links .nav-link { display: none; }
+    }
+
+    /* ============== HERO con SLIDER ============== */
+    .hero {
+      min-height: 92vh;
+      padding: 120px 40px 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-slider {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .slider-image {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 1.6s cubic-bezier(0.65, 0, 0.35, 1);
+      filter: grayscale(100%) contrast(1.1) brightness(0.45) sepia(0.85) hue-rotate(-15deg) saturate(2.2);
+    }
+    .slider-image.active { opacity: 1; animation: kenBurns 8s ease-out forwards; }
+    @keyframes kenBurns { from { transform: scale(1.05); } to { transform: scale(1.12); } }
+    .hero-slider::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 30% 50%, rgba(10,10,10,0.4) 0%, rgba(10,10,10,0.85) 80%),
+        linear-gradient(180deg, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.95) 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .slider-indicators {
+      position: absolute;
+      bottom: 50px;
+      right: 40px;
+      z-index: 6;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .slider-indicator {
+      width: 30px; height: 2px;
+      background: rgba(240,237,230,0.25);
+      transition: all 0.4s ease;
+      cursor: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .slider-indicator.active { width: 60px; }
+    .slider-indicator.active::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--gold);
+      transform: translateX(-100%);
+      animation: indicatorFill 5s linear forwards;
+    }
+    @keyframes indicatorFill { to { transform: translateX(0); } }
+    .slider-counter {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      margin-left: 14px;
+    }
+    @keyframes blinkLive { 50% { opacity: 0.3; } }
+
+    .hero > *:not(.hero-slider) { position: relative; z-index: 10; }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: heroIn 0.8s var(--ease) 0.4s forwards;
+    }
+    .hero-eyebrow::before { content: ''; display: block; width: 32px; height: 1px; background: var(--gold); }
+    .hero-eyebrow .blink { color: var(--gold); animation: blinkLive 1.5s infinite; }
+
+    /* HERO TITLE — usando exactamente las reglas tipográficas de nosotros .page-hero h1 a escala xl */
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(56px, 9vw, 140px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .hero-title-line { display: block; overflow: hidden; }
+    .hero-title-line span {
+      display: inline-block;
+      transform: translateY(110%);
+      animation: titleReveal 1.2s var(--ease) forwards;
+    }
+    .hero-title-line:nth-child(1) span { animation-delay: 0.7s; }
+    .hero-title-line:nth-child(2) span { animation-delay: 0.85s; }
+    .hero-title-line:nth-child(3) span { animation-delay: 1.0s; }
+    .hero-title-line:nth-child(4) span { animation-delay: 1.15s; }
+    @keyframes titleReveal { to { transform: translateY(0); } }
+    .hero-title em { font-style: italic; color: var(--gold); }
+
+    .hero-bottom {
+      display: grid;
+      grid-template-columns: 1.4fr 0.7fr 0.7fr;
+      gap: 60px;
+      margin-top: 60px;
+      align-items: end;
+      opacity: 0;
+      animation: heroIn 1s var(--ease) 1.7s forwards;
+    }
+    @keyframes heroIn { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+    .hero-desc {
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--ink-dim);
+      max-width: 480px;
+    }
+    .hero-desc strong { color: var(--ink); font-weight: 600; }
+    .hero-stat { border-left: 1px solid var(--border-strong); padding-left: 20px; }
+    .hero-stat-num {
+      font-family: var(--font-display);
+      font-size: 42px;
+      line-height: 1;
+      color: var(--gold);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      display: flex; align-items: baseline; gap: 4px;
+    }
+    .hero-stat-num em { color: var(--gold); font-style: normal; }
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--ink-dim);
+      line-height: 1.5;
+    }
+    @media (max-width: 920px) {
+      .hero { padding: 80px 20px 60px; }
+      .hero-bottom { grid-template-columns: 1fr; gap: 28px; margin-top: 40px; }
+      .hero-stat { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 20px; }
+      .slider-indicators { bottom: 30px; right: 20px; }
+      }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 0 40px; }
+
+    /* === MANIFIESTO === */
+    .manifesto {
+      padding: 100px 40px;
+      max-width: var(--max);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 80px;
+    }
+    .manifesto-num {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      padding-top: 6px;
+    }
+    .manifesto-num small {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-top: 6px;
+    }
+    .manifesto-content h2 {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 3.5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 40px;
+    }
+    .manifesto-content h2 em { font-style: italic; color: var(--gold); }
+    .manifesto-content h2 .strike { text-decoration: line-through; color: var(--ink-dim); }
+    .manifesto-features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px 60px;
+      margin-top: 16px;
+    }
+    .manifesto-feat {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .manifesto-feat-num {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .manifesto-feat h3 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+    .manifesto-feat p {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink-dim);
+    }
+    @media (max-width: 768px) {
+      .manifesto { grid-template-columns: 1fr; gap: 32px; padding: 60px 20px; }
+      .manifesto-features { grid-template-columns: 1fr; }
+    }
+
+    /* === SECCIÓN: SISTEMA (5 unidades) === */
+    .units-section { padding: 100px 40px; max-width: var(--max); margin: 0 auto; }
+    .section-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      margin-bottom: 48px;
+    }
+    .units-h {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 3.5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 64px;
+    }
+    .units-h em { font-style: italic; color: var(--gold); }
+    .units-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+    .unit { background: var(--bg); padding: 48px 28px 52px; transition: background 0.3s; position: relative; }
+    .unit:hover { background: var(--bg2); }
+    .unit::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--gold);
+      transform: translateY(-100%);
+      transition: transform 0.4s var(--ease);
+    }
+    .unit:hover::before { transform: translateY(0); }
+    .unit-num {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--pink);
+      margin-bottom: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .unit-icon { width: 36px; height: 36px; color: var(--gold); margin-bottom: 24px; }
+    .unit h3 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+    }
+    .unit p { font-size: 14px; line-height: 1.8; color: var(--ink-dim); }
+    @media (max-width: 1100px) { .units-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 540px) { .units-grid { grid-template-columns: 1fr; } }
+
+    /* === VERTICALES === */
+    .verticals {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 100px 40px;
+    }
+    .verticals-inner { max-width: var(--max); margin: 0 auto; }
+    .verticals-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 60px;
+      margin-bottom: 56px;
+      flex-wrap: wrap;
+    }
+    .verticals-h {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 3.5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .verticals-h em { font-style: italic; color: var(--gold); }
+    .verticals-meta {
+      font-size: 13px;
+      color: var(--ink-dim);
+      line-height: 1.6;
+      text-align: right;
+    }
+    .verticals-meta strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 42px;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .verticals-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .vertical-card {
+      background: var(--bg);
+      border: 1px solid var(--border-strong);
+      padding: 36px 28px;
+      text-decoration: none;
+      color: var(--ink);
+      transition: all 0.4s var(--ease);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 240px;
+    }
+    .vertical-card::after {
+      content: '↗';
+      position: absolute;
+      top: 24px; right: 24px;
+      font-size: 18px;
+      color: var(--gold);
+      transition: transform 0.4s var(--ease);
+    }
+    .vertical-card:hover { background: var(--bg3); border-color: var(--gold); transform: translateY(-4px); }
+    .vertical-card:hover::after { transform: translate(4px,-4px); }
+    .vertical-card.feat {
+      background: linear-gradient(135deg, rgba(232,183,58,0.08), transparent 70%);
+      border-color: var(--gold);
+    }
+    .vertical-num {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--ink-dim);
+      margin-bottom: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .vertical-card.feat .vertical-num { color: var(--gold); }
+    .vertical-h {
+      font-family: var(--font-display);
+      font-size: 22px;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+    }
+    .vertical-text {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--ink-dim);
+      flex-grow: 1;
+      margin-bottom: 16px;
+    }
+    .vertical-clients {
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+      text-transform: uppercase;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+    @media (max-width: 920px) { .verticals-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 540px) {
+      .verticals-grid { grid-template-columns: 1fr; }
+      .verticals-meta { text-align: left; }
+    }
+
+    /* === EQUIPO STRIP === */
+    .equipo {
+      padding: 100px 40px;
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+    .equipo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 60px;
+      margin-bottom: 56px;
+      flex-wrap: wrap;
+    }
+    .equipo-h {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 3.5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .equipo-h em { font-style: italic; color: var(--gold); }
+    .equipo-meta {
+      font-size: 13px;
+      color: var(--ink-dim);
+      line-height: 1.6;
+      text-align: right;
+    }
+    .equipo-meta strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 42px;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .equipo-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 2px;
+    }
+    .equipo-card {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: var(--bg2);
+    }
+    .equipo-card img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: grayscale(30%);
+      transition: filter 0.5s var(--ease), transform 0.5s var(--ease);
+    }
+    .equipo-card:hover img { filter: grayscale(0); transform: scale(1.04); }
+    .equipo-card-label {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(10,10,10,0.9));
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--ink-dim);
+      padding: 32px 14px 14px;
+    }
+    @media (max-width: 920px) {
+      .equipo-grid { grid-template-columns: repeat(3, 1fr); }
+      .equipo-meta { text-align: left; }
+    }
+    @media (max-width: 540px) { .equipo-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* === CARTERA === */
+    .cartera {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 100px 40px;
+    }
+    .cartera-inner { max-width: var(--max); margin: 0 auto; }
+    .cartera-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 60px;
+      margin-bottom: 56px;
+      flex-wrap: wrap;
+    }
+    .cartera-h {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 3.5vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .cartera-h em { font-style: italic; color: var(--gold); }
+    .cartera-meta {
+      font-size: 13px;
+      color: var(--ink-dim);
+      line-height: 1.6;
+      text-align: right;
+    }
+    .cartera-meta strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 42px;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .cartera-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1px;
+      background: var(--border-strong);
+      border: 1px solid var(--border-strong);
+    }
+    .cartera-cell {
+      background: var(--bg);
+      padding: 22px 14px;
+      aspect-ratio: 5/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      transition: all 0.3s;
+      line-height: 1.3;
+    }
+    .cartera-cell:hover { background: var(--gold); color: var(--bg); transform: scale(1.04); z-index: 2; }
+    .cartera-note {
+      margin-top: 28px;
+      font-size: 11px;
+      color: var(--ink-faint);
+      text-align: center;
+    }
+    @media (max-width: 920px) { .cartera-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 540px) { .cartera-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* === FOUNDER QUOTE === */
+    .founder-quote {
+      padding: 100px 40px;
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+    .founder-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 80px;
+      align-items: end;
+    }
+    .quote-mark {
+      font-family: var(--font-display);
+      font-size: 120px;
+      color: var(--gold);
+      line-height: 0.5;
+      height: 60px;
+      margin-bottom: 8px;
+    }
+    .quote-text {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 3vw, 44px);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 36px;
+      max-width: 800px;
+    }
+    .quote-text strong { color: var(--gold); font-weight: inherit; }
+    .quote-author {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .quote-author::before { content: ''; display: block; width: 28px; height: 1px; background: var(--gold); }
+    .quote-author span { color: var(--gold); }
+    .founder-photo {
+      aspect-ratio: 4/5;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      background: var(--bg2);
+    }
+    .founder-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: grayscale(20%);
+    }
+    .founder-tag {
+      position: absolute;
+      bottom: 16px; left: 16px;
+      background: rgba(10,10,10,0.85);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 8px 14px;
+      color: var(--ink-dim);
+      backdrop-filter: blur(8px);
+    }
+    @media (max-width: 920px) {
+      .founder-grid { grid-template-columns: 1fr; gap: 48px; }
+      .founder-photo { max-width: 320px; }
+    }
+
+    /* === STATS BAND === */
+    .stats {
+      background: var(--gold);
+      color: var(--bg);
+      padding: 100px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stats::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 34px, rgba(10,10,10,0.04) 34px, rgba(10,10,10,0.04) 35px);
+      pointer-events: none;
+    }
+    .stats-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--bg);
+      opacity: 0.65;
+      margin-bottom: 48px;
+      text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+    }
+    .stats-eyebrow::before, .stats-eyebrow::after { content: ''; display: block; width: 28px; height: 1px; background: var(--bg); opacity: 0.4; }
+    .stats-grid {
+      max-width: var(--max);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 48px;
+      position: relative; z-index: 1;
+    }
+    .stat-cell { border-left: 2px solid var(--bg); padding-left: 28px; }
+    .stat-cell:first-child { border-left: none; padding-left: 0; }
+    .stat-big {
+      font-family: var(--font-display);
+      font-size: clamp(52px, 6vw, 96px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      color: var(--bg);
+      margin-bottom: 12px;
+    }
+    .stat-big em { font-style: normal; }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--bg);
+      opacity: 0.7;
+      line-height: 1.5;
+    }
+    @media (max-width: 920px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 40px 28px; }
+      .stat-cell:nth-child(3) { border-left: none; padding-left: 0; }
+    }
+
+    /* === CTA BANNER === */
+    .cta-banner {
+      background: var(--bg3);
+      border-top: 1px solid var(--border);
+      padding: 100px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-banner-bg {
+      position: absolute;
+      inset: 0;
+      font-family: var(--font-display);
+      font-size: 280px;
+      font-weight: 900;
+      color: rgba(240,237,230,0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.05em;
+      pointer-events: none;
+      user-select: none;
+    }
+    .cta-inner { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; }
+    .cta-banner h2 {
+      font-family: var(--font-display);
+      font-size: clamp(40px, 5vw, 72px);
+      line-height: 1.0;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+    .cta-banner h2 em { font-style: italic; color: var(--gold); }
+    .cta-banner p {
+      font-size: 17px;
+      color: var(--ink-dim);
+      max-width: 560px;
+      margin: 0 auto 48px;
+      line-height: 1.7;
+    }
+    .btn-primary {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--gold);
+      padding: 18px 44px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .btn-primary:hover { background: #f5c84a; transform: translateY(-2px); }
+    .btn-ghost {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink);
+      border: 1px solid var(--border);
+      padding: 18px 44px;
+      text-decoration: none;
+      margin-left: 16px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .btn-ghost:hover { border-color: var(--ink-dim); transform: translateY(-2px); }
+    @media (max-width: 540px) {
+      .cta-banner-bg { font-size: 100px; }
+      .btn-ghost { margin-left: 0; margin-top: 12px; }
+    }
+
+    /* === DOCK === */
+    .dock {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(22,22,22,0.92);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      padding: 8px 12px;
+    }
+    .dock-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px;
+      color: var(--ink-dim);
+      padding: 6px 10px;
+      border-right: 1px solid var(--border);
+      margin-right: 4px;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: blinkLive 2s infinite;
+    }
+    .dock-link {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      text-decoration: none;
+      padding: 8px 14px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .dock-link:hover { color: var(--ink); background: rgba(240,237,230,0.05); }
+    .dock-cta {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--gold);
+      padding: 8px 18px;
+      text-decoration: none;
+      margin-left: 4px;
+      transition: background 0.2s;
+    }
+    .dock-cta:hover { background: #f5c84a; }
+    @media (max-width: 768px) {
+      .dock-status, .dock-link { display: none; }
+      .dock { bottom: 16px; padding: 6px 8px; }
+    }
+
+    /* === FOOTER === */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 80px 40px 40px;
+    }
+    .footer-top {
+      max-width: var(--max);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 60px;
+      padding-bottom: 60px;
+      border-bottom: 1px solid var(--border);
+    }
+    .footer-brand-mark {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--ink);
+      margin-bottom: 12px;
+    }
+    .footer-brand-mark svg { width: 24px; height: 24px; }
+    .footer-tagline {
+      font-size: 11px;
+      color: var(--ink-dim);
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+    }
+    .footer-desc { font-size: 13px; line-height: 1.7; color: var(--ink-dim); }
+    .footer-col-h {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      margin-bottom: 20px;
+    }
+    .footer-list { list-style: none; }
+    .footer-list li { margin-bottom: 10px; }
+    .footer-list a { font-size: 13px; color: var(--ink-dim); text-decoration: none; transition: color 0.2s; }
+    .footer-list a:hover { color: var(--ink); }
+    .footer-list li:not(:has(a)) { font-size: 13px; color: var(--ink-dim); }
+    .footer-base {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding-top: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--ink-dim);
+    }
+    .footer-base a { color: var(--ink-dim); text-decoration: none; transition: color 0.2s; }
+    .footer-base a:hover { color: var(--gold); }
+    @media (max-width: 920px) {
+      .footer-top { grid-template-columns: 1fr 1fr; gap: 40px; }
+    }
+    @media (max-width: 540px) {
+      .footer-top { grid-template-columns: 1fr; }
+      .footer-base { flex-direction: column; gap: 12px; }
+    }
+
+    /* === REVEAL === */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    /* SCROLL TOP */
+    .scroll-top-button {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      z-index: 200;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: none;
+      opacity: 0;
+      transition: opacity 0.3s, background 0.2s;
+    }
+    .scroll-top-button.visible { opacity: 1; }
+    .scroll-top-button:hover { background: var(--bg3); }
+  </style>
+</head>
+<body>
+
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-trail" id="cursor-trail"></div>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <a href="/trompo/" class="nav-logo" data-cursor-hover>
+      <img src="/trompo/assets/white.webp" alt="Trompo Agencia">
+    </a>
+    <div class="nav-links">
+      <a href="/trompo/" class="nav-link active" data-cursor-hover>Inicio</a>
+      <a href="/trompo/nosotros" class="nav-link" data-cursor-hover>Nosotros</a>
+      <a href="#sistema" class="nav-link" data-cursor-hover>Sistema</a>
+      <a href="/trompo/contactanos" class="nav-cta" data-cursor-hover>Hablemos →</a>
+    </div>
+  </nav>
+
+  <!-- HERO con SLIDER -->
+  <section class="hero">
+    <div class="hero-slider" id="slider">
+      <div class="slider-image active" style="background-image: url('/trompo/img/hero/hero-01.jpg');"></div>
+      <div class="slider-image" style="background-image: url('/trompo/img/hero/hero-02.jpg');"></div>
+      <div class="slider-image" style="background-image: url('/trompo/img/hero/hero-03.jpg');"></div>
+    </div>
+
+    <div class="slider-indicators">
+      <div class="slider-indicator active" data-index="0"></div>
+      <div class="slider-indicator" data-index="1"></div>
+      <div class="slider-indicator" data-index="2"></div>
+      <span class="slider-counter" id="slider-counter">01 / 03</span>
+    </div>
+
+    <div class="hero-eyebrow">
+      <span>Trompo Agencia · 2026</span>
+      <span class="blink">●</span>
+      <span>Vanguardia digital · Córdoba</span>
+    </div>
+
+    <h1 class="hero-title">
+      <span class="hero-title-line"><span>Marketing</span></span>
+      <span class="hero-title-line"><span>para marcas</span></span>
+      <span class="hero-title-line"><span>que <em>mueven</em></span></span>
+      <span class="hero-title-line"><span>el negocio.</span></span>
+    </h1>
+
+    <div class="hero-bottom">
+      <p class="hero-desc">
+        <strong>Diez años acompañando marcas argentinas.</strong>
+        Diseño, multimedia, desarrollo web, paid media y redes sociales funcionando como un sistema integrado para mover el negocio del cliente — no para llenar reportes.
+      </p>
+      <div class="hero-stat">
+        <div class="hero-stat-num">10<em>+</em></div>
+        <div class="hero-stat-label">Años de operación<br>desde Córdoba</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">80<em>+</em></div>
+        <div class="hero-stat-label">Marcas argentinas<br>en nuestra cartera</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- MANIFIESTO -->
+  <section class="manifesto">
+    <div>
+      <div class="manifesto-num reveal">01<small>Cómo trabajamos</small></div>
+    </div>
+    <div class="manifesto-content">
+      <h2 class="reveal">No vendemos <span class="strike">campañas.</span><br>Construimos <em>sistemas</em><br>que mueven el negocio.</h2>
+      <div class="manifesto-features">
+        <div class="manifesto-feat reveal">
+          <div class="manifesto-feat-num">A</div>
+          <div>
+            <h3>Diagnóstico antes de propuesta</h3>
+            <p>Entendemos antes de ejecutar. Marca, negocio, contexto y audiencias bajo una misma lectura estratégica.</p>
+          </div>
+        </div>
+        <div class="manifesto-feat reveal">
+          <div class="manifesto-feat-num">B</div>
+          <div>
+            <h3>Dirección, no tácticas sueltas</h3>
+            <p>Definimos rumbo, no acciones aisladas. Roadmap digital claro, prioridades bien ordenadas y foco en impacto real.</p>
+          </div>
+        </div>
+        <div class="manifesto-feat reveal">
+          <div class="manifesto-feat-num">C</div>
+          <div>
+            <h3>Producción que activa</h3>
+            <p>Creamos activos que convierten. Diseño, contenido y desarrollo listos para escalar — nada decorativo, todo funcional.</p>
+          </div>
+        </div>
+        <div class="manifesto-feat reveal">
+          <div class="manifesto-feat-num">D</div>
+          <div>
+            <h3>Optimización continua</h3>
+            <p>Medimos para crecer, no para reportar. Datos, decisiones y mejora continua orientada a resultados de negocio reales.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SISTEMA / 5 UNIDADES -->
+  <section class="units-section" id="sistema">
+    <div class="section-eyebrow reveal">02 · Sistema integrado</div>
+    <h2 class="units-h reveal">Cinco unidades<br>que <em>trabajan como una.</em></h2>
+    <div class="units-grid">
+      <div class="unit reveal" data-cursor-hover>
+        <div class="unit-num">01 / Diseño</div>
+        <svg class="unit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <h3>Diseño</h3>
+        <p>Identidad y sistema visual que ordena, diferencia y profesionaliza la marca en cada punto de contacto.</p>
+      </div>
+      <div class="unit reveal" data-cursor-hover>
+        <div class="unit-num">02 / Multimedia</div>
+        <svg class="unit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <h3>Multimedia</h3>
+        <p>Motion, edición y producción audiovisual para comunicar con impacto y humanizar la marca.</p>
+      </div>
+      <div class="unit reveal" data-cursor-hover>
+        <div class="unit-num">03 / Desarrollo Web</div>
+        <svg class="unit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <h3>Desarrollo Web</h3>
+        <p>Sitios y plataformas que posicionan, convierten y escalan. Performance técnica al servicio del negocio.</p>
+      </div>
+      <div class="unit reveal" data-cursor-hover>
+        <div class="unit-num">04 / Paid Media</div>
+        <svg class="unit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>
+        <h3>Paid Media</h3>
+        <p>Google, Meta, LinkedIn Ads, performance y posicionamiento. Inversión publicitaria que devuelve negocio.</p>
+      </div>
+      <div class="unit reveal" data-cursor-hover>
+        <div class="unit-num">05 / Redes Sociales</div>
+        <svg class="unit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+        <h3>Redes Sociales</h3>
+        <p>Contenido, comunidad y narrativa diaria que construye cultura de marca y sostiene relación con la audiencia.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VERTICALES -->
+  <section class="verticals" id="verticales">
+    <div class="verticals-inner">
+      <div class="verticals-header">
+        <div>
+          <div class="section-eyebrow reveal">03 · Industrias</div>
+          <h2 class="verticals-h reveal">Sectores en los que<br><em>operamos.</em></h2>
+        </div>
+        <div class="verticals-meta reveal"><strong>9</strong>verticales activas<br>con cartera consolidada<br>en cada sector</div>
+      </div>
+      <div class="verticals-grid">
+        <a href="#" class="vertical-card feat reveal" data-cursor-hover>
+          <div class="vertical-num">01 / Vertical destacada</div>
+          <h3 class="vertical-h">Industrias del Movimiento</h3>
+          <p class="vertical-text">Agro, automotriz, transporte, autopartes, motos y maquinaria. La vertical más densa de nuestra cartera con más de 15 marcas activas.</p>
+          <div class="vertical-clients">Volvo · Denso · Super Walter · Kamax · Renault Trucks</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">02</div>
+          <h3 class="vertical-h">Servicios Financieros y Seguros</h3>
+          <p class="vertical-text">Bancos, fintech, seguros y prepagas. Comunicación que genera confianza y bancariza relación con el cliente.</p>
+          <div class="vertical-clients">Mercantil Andina · Western Union · CAMI · Femesa</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">03</div>
+          <h3 class="vertical-h">Hotelería y Turismo</h3>
+          <p class="vertical-text">Marca país, agencias de viaje, hoteles y experiencias. Marketing para inspirar la decisión de viaje.</p>
+          <div class="vertical-clients">Buquebus · Argentina Late con Vos · Lozada · Ansenuza</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">04</div>
+          <h3 class="vertical-h">Salud y Belleza</h3>
+          <p class="vertical-text">Clínicas, centros de diagnóstico, estética médica y distribuidoras del sector.</p>
+          <div class="vertical-clients">CEDIR · Clínica del Cerro · IMER · Korper</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">05</div>
+          <h3 class="vertical-h">Alimentos y Bebidas</h3>
+          <p class="vertical-text">Industria, retail y consumo masivo. Branding y performance para sostener la posición en góndola y digital.</p>
+          <div class="vertical-clients">Molino Cañuelas · Gaseosa Secco · 9 de Oro · Ardu Café</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">06</div>
+          <h3 class="vertical-h">Construcción y Hogar</h3>
+          <p class="vertical-text">Materiales, viviendas, mobiliario y decoración. Marketing para ciclos largos de decisión B2B y B2C.</p>
+          <div class="vertical-clients">Mosaicos Blangino · Cerroplast · Viviendas Canadienses</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">07</div>
+          <h3 class="vertical-h">Indumentaria y Calzado</h3>
+          <p class="vertical-text">Marcas locales y diseño argentino. Presencia digital alineada a tendencias, e-commerce y comunidad.</p>
+          <div class="vertical-clients">AF Jeans · Batistella · Agostino · Guanaco</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">08</div>
+          <h3 class="vertical-h">Educación</h3>
+          <p class="vertical-text">Institutos, idiomas y formación profesional. Captación de matrículas y posicionamiento institucional sostenido.</p>
+          <div class="vertical-clients">CEICOS · Instituto Saber · Higland School</div>
+        </a>
+        <a href="#" class="vertical-card reveal" data-cursor-hover>
+          <div class="vertical-num">09</div>
+          <h3 class="vertical-h">Tecnología y Software</h3>
+          <p class="vertical-text">SaaS, soluciones tecnológicas y servicios digitales. Marketing B2B para ciclos de venta complejos y técnicos.</p>
+          <div class="vertical-clients">Starlight · Viditec · Ranko</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- EQUIPO -->
+  <section class="equipo" id="equipo">
+    <div class="equipo-header">
+      <div>
+        <div class="section-eyebrow reveal">04 · El equipo</div>
+        <h2 class="equipo-h reveal">Detrás de cada marca,<br>hay <em>un equipo</em> que la mueve.</h2>
+      </div>
+      <div class="equipo-meta reveal">
+        <strong>13+</strong>
+        personas trabajando<br>en oficina · Córdoba<br>Lun a Vie · 09–18 hs
+      </div>
+    </div>
+    <div class="equipo-grid">
+      <div class="equipo-card reveal" data-cursor-hover>
+        <img src="/trompo/assets/img/home/estrategia.jpeg" alt="Estrategia">
+        <div class="equipo-card-label">Estrategia · Reunión semanal</div>
+      </div>
+      <div class="equipo-card reveal" data-cursor-hover>
+        <img src="/trompo/assets/img/home/disenio.jpeg" alt="Diseño">
+        <div class="equipo-card-label">Diseño · Iteración cliente</div>
+      </div>
+      <div class="equipo-card reveal" data-cursor-hover>
+        <img src="/trompo/assets/img/home/produccion.jpeg" alt="Producción">
+        <div class="equipo-card-label">Producción · Sprint en curso</div>
+      </div>
+      <div class="equipo-card reveal" data-cursor-hover>
+        <img src="/trompo/assets/img/home/paid-media.jpeg" alt="Paid Media">
+        <div class="equipo-card-label">Paid Media · Optimización</div>
+      </div>
+      <div class="equipo-card reveal" data-cursor-hover>
+        <img src="/trompo/assets/img/home/desarrollo.jpeg" alt="Desarrollo">
+        <div class="equipo-card-label">Desarrollo · Code review</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARTERA -->
+  <section class="cartera" id="cartera">
+    <div class="cartera-inner">
+      <div class="cartera-header">
+        <div>
+          <div class="section-eyebrow reveal">05 · Cartera</div>
+          <h2 class="cartera-h reveal">Trayectoria que<br>escribieron <em>las marcas.</em></h2>
+        </div>
+        <div class="cartera-meta reveal">
+          <strong>80+</strong>
+          marcas argentinas<br>en 10 años de operación<br>multi-sector
+        </div>
+      </div>
+      <div class="cartera-grid reveal">
+        <div class="cartera-cell">Volvo Trucks</div><div class="cartera-cell">Denso</div>
+        <div class="cartera-cell">Western Union</div><div class="cartera-cell">Mercantil Andina</div>
+        <div class="cartera-cell">Buquebus</div><div class="cartera-cell">Molino Cañuelas</div>
+        <div class="cartera-cell">Renault Trucks</div><div class="cartera-cell">Super Walter</div>
+        <div class="cartera-cell">Turín Fiat</div><div class="cartera-cell">Argentina Late con Vos</div>
+        <div class="cartera-cell">Córdoba Turismo</div><div class="cartera-cell">Kamax Motos</div>
+        <div class="cartera-cell">Chexa Chevrolet</div><div class="cartera-cell">Hiperauto Hyundai</div>
+        <div class="cartera-cell">Hiperplatinum Kia</div><div class="cartera-cell">Nation Peugeot</div>
+        <div class="cartera-cell">Nation Citroen</div><div class="cartera-cell">Tablada Motors</div>
+        <div class="cartera-cell">Richiger</div><div class="cartera-cell">Royjo</div>
+        <div class="cartera-cell">Gaseosa Secco</div><div class="cartera-cell">Ardu Café</div>
+        <div class="cartera-cell">9 de Oro</div><div class="cartera-cell">CEDIR</div>
+        <div class="cartera-cell">Clínica del Cerro</div><div class="cartera-cell">Instituto IMER</div>
+        <div class="cartera-cell">Korper</div><div class="cartera-cell">CAMI Salud</div>
+        <div class="cartera-cell">Femesa Salud</div><div class="cartera-cell">SOS Salud</div>
+        <div class="cartera-cell">Ansenuza Hotel</div><div class="cartera-cell">Lozada Viajes</div>
+        <div class="cartera-cell">Mosaicos Blangino</div><div class="cartera-cell">Cerroplast</div>
+        <div class="cartera-cell">AF Jeans</div><div class="cartera-cell">+ 45 más</div>
+      </div>
+      <div class="cartera-note">La presencia de una marca no implica relación comercial vigente al día de hoy. Lista representativa de la trayectoria de Trompo Agencia.</div>
+    </div>
+  </section>
+
+  <!-- FOUNDER QUOTE -->
+  <section class="founder-quote" id="founder">
+    <div class="founder-grid">
+      <div>
+        <div class="section-eyebrow reveal">06 · Liderazgo</div>
+        <div class="quote-mark reveal">"</div>
+        <p class="quote-text reveal">Trabajamos para que cada peso invertido en marketing empuje en <strong>la misma dirección</strong> — la del negocio.</p>
+        <p class="quote-author reveal">Esteban Raparo · <span>Founder Trompo Agencia</span></p>
+      </div>
+      <div class="founder-photo reveal">
+        <img src="/trompo/assets/img/esteban.jpeg" alt="Esteban Raparo, Founder">
+        <div class="founder-tag">15+ años · Google Certified</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BAND -->
+  <section class="stats">
+    <div class="stats-eyebrow">Trompo en números</div>
+    <div class="stats-grid">
+      <div class="stat-cell reveal">
+        <div class="stat-big">15<em>+</em></div>
+        <div class="stat-label">Años de experiencia<br>en marketing digital</div>
+      </div>
+      <div class="stat-cell reveal">
+        <div class="stat-big">10<em>+</em></div>
+        <div class="stat-label">Años operando<br>como Trompo Agencia</div>
+      </div>
+      <div class="stat-cell reveal">
+        <div class="stat-big">80<em>+</em></div>
+        <div class="stat-label">Marcas argentinas<br>en nuestra trayectoria</div>
+      </div>
+      <div class="stat-cell reveal">
+        <div class="stat-big">G<em>·</em>P</div>
+        <div class="stat-label">Google Partner<br>Certified desde el inicio</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-banner" id="contacto">
+    <div class="cta-banner-bg">Trompo</div>
+    <div class="cta-inner">
+      <div class="section-eyebrow reveal" style="justify-content: center; display: flex; gap: 10px; margin-bottom: 24px;">
+        <span>07 · Conversemos</span>
+      </div>
+      <h2 class="reveal">Definamos tu<br><em>próximo paso</em> estratégico.</h2>
+      <p class="reveal">Una conversación corta para entender cómo está hoy tu marketing y mostrarte cómo trabajamos. Sin propuesta cerrada, sin presión.</p>
+      <div class="reveal">
+        <a href="/trompo/contactanos" class="btn-primary" data-cursor-hover>Hablemos →</a>
+        <a href="/trompo/nosotros" class="btn-ghost" data-cursor-hover>Conocer Trompo</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand-mark">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="3.5" fill="#E8B73A"/><circle cx="18" cy="12" r="3.5" fill="#E8B73A"/><circle cx="12" cy="18" r="3.5" fill="#E8B73A"/><circle cx="6" cy="12" r="3.5" fill="#E8B73A"/><circle cx="12" cy="12" r="2.5" fill="#E8458F"/></svg>
+          Trompo
+        </div>
+        <div class="footer-tagline">Vanguardia digital · Córdoba</div>
+        <p class="footer-desc">Marketing para marcas que mueven el negocio. Diez años de operación desde Córdoba con clientes en toda Argentina.</p>
+      </div>
+      <div>
+        <h4 class="footer-col-h">Institucional</h4>
+        <ul class="footer-list">
+          <li><a href="/trompo/" data-cursor-hover>Inicio</a></li>
+          <li><a href="/trompo/nosotros" data-cursor-hover>Nosotros</a></li>
+          <li><a href="/trompo/contactanos" data-cursor-hover>Contactanos</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="footer-col-h">Sistema</h4>
+        <ul class="footer-list">
+          <li><a href="#" data-cursor-hover>Diseño</a></li>
+          <li><a href="#" data-cursor-hover>Multimedia</a></li>
+          <li><a href="#" data-cursor-hover>Desarrollo Web</a></li>
+          <li><a href="#" data-cursor-hover>Paid Media</a></li>
+          <li><a href="#" data-cursor-hover>Redes Sociales</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="footer-col-h">Horarios</h4>
+        <ul class="footer-list">
+          <li>Lunes a Viernes</li>
+          <li>09:00 a 18:00 hs</li>
+          <li>&nbsp;</li>
+          <li><strong style="color:var(--ink)">Córdoba, Argentina</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>© 2026 Trompo Agencia · Sistema digital v.2030.04</span>
+      <a href="mailto:somos@trompoagencia.com" data-cursor-hover>somos@trompoagencia.com</a>
+    </div>
+  </footer>
+
+  <!-- DOCK -->
+  <div class="dock">
+    <div class="dock-status">
+      <span class="live-dot"></span>
+      <span>Online</span>
+    </div>
+    <a href="#sistema" class="dock-link" data-cursor-hover>Sistema</a>
+    <a href="#cartera" class="dock-link" data-cursor-hover>Cartera</a>
+    <a href="/trompo/contactanos" class="dock-cta" data-cursor-hover>Hablemos →</a>
+  </div>
+
+  <!-- SCROLL TOP -->
+  <button class="scroll-top-button" id="scrollTop" aria-label="Scroll to top">
+    <svg width="18" height="18" viewBox="0 0 23 24" fill="none"><path d="M11.6526 22.231L11.6526 1.83985M11.6526 1.83985L1.62695 12.0354M11.6526 1.83985L21.6782 12.0354" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <script>
+    // CURSOR
+    const cursor = document.getElementById('cursor');
+    const trail = document.getElementById('cursor-trail');
+    let mx = 0, my = 0, tx = 0, ty = 0;
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      cursor.style.transform = `translate(${mx}px,${my}px) translate(-50%,-50%)`;
+    });
+    function animTrail() {
+      tx += (mx - tx) * 0.18;
+      ty += (my - ty) * 0.18;
+      trail.style.transform = `translate(${tx}px,${ty}px) translate(-50%,-50%)`;
+      requestAnimationFrame(animTrail);
+    }
+    animTrail();
+    document.querySelectorAll('[data-cursor-hover]').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+    });
+
+    // REVEAL
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // SCROLL TOP
+    const btn = document.getElementById('scrollTop');
+    window.addEventListener('scroll', () => btn.classList.toggle('visible', window.scrollY > 400));
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // SLIDER
+    (function initSlider() {
+      const sliderEl = document.getElementById('slider');
+      if (!sliderEl) return;
+      const slides = sliderEl.querySelectorAll('.slider-image');
+      const indicators = document.querySelectorAll('.slider-indicators .slider-indicator');
+      const counter = document.getElementById('slider-counter');
+      if (!slides.length || !indicators.length) return;
+
+      let current = 0;
+      const total = slides.length;
+      const DURATION = 5000;
+
+      function update(i) {
+        slides[current].classList.remove('active');
+        indicators[current].classList.remove('active');
+        current = i;
+        slides[current].classList.add('active');
+        indicators[current].classList.add('active');
+        if (counter) counter.textContent = `0${current+1} / 0${total}`;
+        // Reset progress animation on the active indicator
+        const active = indicators[current];
+        active.style.animation = 'none';
+        // Force reflow
+        void active.offsetWidth;
+        active.style.animation = '';
+      }
+      function nextSlide() { update((current + 1) % total); }
+
+      let timer = setInterval(nextSlide, DURATION);
+      indicators.forEach((ind, i) => {
+        ind.addEventListener('click', () => {
+          clearInterval(timer);
+          update(i);
+          timer = setInterval(nextSlide, DURATION);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

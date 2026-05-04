@@ -12,7 +12,7 @@ Nombrá los archivos así:
 
 ## 2. Abrir la terminal
 
-Desde esta carpeta, abrí la terminal con **Ctrl + Ñ** o **Ctrl + J**.
+Desde esta pantalla, abrí la terminal con **Ctrl + Ñ** o **Ctrl + J**.
 
 ---
 
