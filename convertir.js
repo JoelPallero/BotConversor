@@ -341,8 +341,8 @@ function elWidget(type, settings) {
 
 const COLUMN_CLS = /\bcol\b|col-[a-z0-9]|\bcolumn\b|\bgrid-item\b|\bcell\b/i;
 const ROW_CLS    = /\brow\b|\bgrid\b|\bcolumns\b/i;
-const SKIP_CLS   = /\bcursor\b|\bpreloader\b|\bloader\b|\boverlay\b|\bmodal\b|\bbackdrop\b|\boffcanvas\b/i;
-const SKIP_ID    = /^(cursor|preloader|loader|overlay|modal|sidebar)/i;
+const SKIP_CLS   = /\bcursor\b|\bpreloader\b|\bloader\b|\boverlay\b|\bmodal\b|\bbackdrop\b|\boffcanvas\b|\bdock\b|\bscroll-top\b/i;
+const SKIP_ID    = /^(cursor|preloader|loader|overlay|modal|sidebar|dock|scroll)/i;
 
 function shouldSkipEl($, el) {
     const cls = $(el).attr('class') || '';
@@ -356,6 +356,10 @@ function parseCSSForElementor(cssText) {
     const vars  = {};
     const rules = {};
 
+    // Strip CSS comments first — otherwise comment text gets prepended to selectors
+    cssText = cssText.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // Extract :root CSS variables (flat block — no nested braces expected)
     const rootM = cssText.match(/:root\s*\{([^}]+)\}/);
     if (rootM) {
         for (const line of rootM[1].split(';')) {
@@ -364,18 +368,58 @@ function parseCSSForElementor(cssText) {
         }
     }
 
-    const ruleRe = /([^{}]+)\{([^}]+)\}/g;
-    let m;
-    while ((m = ruleRe.exec(cssText)) !== null) {
+    // Character-by-character parser: skips @-rules (media queries, keyframes, font-face, etc.)
+    // This prevents mobile/animation rules from overwriting desktop styles.
+    let i = 0;
+    const len = cssText.length;
+
+    while (i < len) {
+        while (i < len && /\s/.test(cssText[i])) i++;
+        if (i >= len) break;
+
+        // Skip @-rules entirely (media, keyframes, font-face, supports, etc.)
+        if (cssText[i] === '@') {
+            while (i < len && cssText[i] !== '{') i++;
+            if (i >= len) break;
+            let depth = 0;
+            while (i < len) {
+                if (cssText[i] === '{') depth++;
+                else if (cssText[i] === '}') { depth--; if (depth === 0) { i++; break; } }
+                i++;
+            }
+            continue;
+        }
+
+        // Read selector (everything up to '{')
+        const selStart = i;
+        while (i < len && cssText[i] !== '{') i++;
+        if (i >= len) break;
+        const selector = cssText.slice(selStart, i).trim();
+        i++; // skip '{'
+
+        // Read property block up to the matching '}'
+        const propStart = i;
+        let depth = 1;
+        while (i < len && depth > 0) {
+            if (cssText[i] === '{') depth++;
+            else if (cssText[i] === '}') depth--;
+            i++;
+        }
+        const propsText = cssText.slice(propStart, i - 1);
+
+        if (!selector || selector === ':root') continue;
+
         const props = {};
-        for (const decl of m[2].split(';')) {
+        for (const decl of propsText.split(';')) {
             const idx = decl.indexOf(':');
             if (idx === -1) continue;
             const prop = decl.substring(0, idx).trim();
             const val  = decl.substring(idx + 1).trim();
-            if (prop) props[prop] = val;
+            if (prop && !prop.startsWith('--') && val) props[prop] = val;
         }
-        for (const sel of m[1].trim().split(',')) {
+        if (Object.keys(props).length === 0) continue;
+
+        for (const sel of selector.split(',')) {
             const s = sel.trim();
             if (!s || s === ':root') continue;
             if (!rules[s]) rules[s] = {};
@@ -401,11 +445,21 @@ function getElStyles($el, cssData) {
     const merged = {};
     const tag = ($el[0] && $el[0].tagName) ? $el[0].tagName.toLowerCase() : '';
     const cls = ($el.attr('class') || '').split(/\s+/).filter(Boolean);
+    const id  = $el.attr('id') || '';
 
+    // Tag selector
     if (rules[tag]) Object.assign(merged, rules[tag]);
+    // Class selectors
     for (const c of cls) {
         if (rules[`.${c}`]) Object.assign(merged, rules[`.${c}`]);
     }
+    // Tag + class combinations (e.g. "h2.manifesto-content")
+    for (const c of cls) {
+        if (rules[`${tag}.${c}`]) Object.assign(merged, rules[`${tag}.${c}`]);
+    }
+    // ID selector
+    if (id && rules[`#${id}`]) Object.assign(merged, rules[`#${id}`]);
+    // Resolve all CSS variable references to literal values
     for (const [k, v] of Object.entries(merged)) {
         merged[k] = resolveVar(v, vars);
     }
@@ -414,17 +468,27 @@ function getElStyles($el, cssData) {
 
 function parseSizeVal(val) {
     if (!val) return null;
+    // Handle clamp() — take the preferred (middle) value
     const clampM = val.match(/clamp\([^,]+,\s*([^,]+),\s*[^)]+\)/);
     if (clampM) val = clampM[1].trim();
-    const match = val.match(/^([\d.]+)(px|em|rem|vw|vh|%)?$/);
+    // Handle negative values (letter-spacing: -0.02em)
+    const match = val.match(/^(-?[\d.]+)(px|em|rem|vw|vh|%)?$/);
     if (!match) return null;
     const size = parseFloat(match[1]);
-    const unit = match[2] === 'rem' ? 'em' : (match[2] || 'px');
+    if (isNaN(size)) return null;
+    const rawUnit = match[2];
+    if (!rawUnit) {
+        // Unitless (e.g. line-height: 1.6, line-height: 0.95) → treat as 'em' ratio when < 10
+        return Math.abs(size) < 10
+            ? { unit: 'em', size, sizes: [] }
+            : { unit: 'px', size: Math.round(size), sizes: [] };
+    }
+    const unit = rawUnit === 'rem' ? 'em' : rawUnit;
     return { unit, size: unit === 'px' ? Math.round(size) : size, sizes: [] };
 }
 
 function firstFontFamily(val) {
-    if (!val) return null;
+    if (!val || val.includes('var(')) return null;
     return val.split(',')[0].trim().replace(/['"]/g, '');
 }
 
@@ -467,26 +531,76 @@ function applyTypo(styles, settings, colorKey) {
 
 function getContainerBgSettings(styles) {
     const s = {};
+
+    // Background color — Elementor requires background_background: 'classic' to activate color
     if (styles['background-color']) {
+        s['background_background'] = 'classic';
         s['background_color'] = styles['background-color'];
     } else if (styles['background']) {
-        const bgCol = styles['background'].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/);
-        if (bgCol) s['background_color'] = bgCol[0];
+        const val = styles['background'];
+        const bgCol = val.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/);
+        if (bgCol) {
+            s['background_background'] = 'classic';
+            s['background_color'] = bgCol[0];
+        }
     }
+
+    // Background image (e.g. from extracted inline style="background-image: url(...)")
+    if (styles['background-image'] && styles['background-image'] !== 'none') {
+        const urlM = styles['background-image'].match(/url\(['"]?([^'"()]+)['"]?\)/);
+        if (urlM) {
+            s['background_background'] = 'classic';
+            s['background_image'] = { url: urlM[1], id: '' };
+            if (styles['background-size'])     s['background_size'] = { size: styles['background-size'] };
+            if (styles['background-position']) s['background_position'] = styles['background-position'];
+        }
+    }
+
+    // Padding — correctly parse CSS shorthand (1–4 values)
     const pt = parseSizeVal(styles['padding-top']    || '');
     const pb = parseSizeVal(styles['padding-bottom'] || '');
     const pl = parseSizeVal(styles['padding-left']   || '');
     const pr = parseSizeVal(styles['padding-right']  || '');
     if (styles['padding'] && !pt && !pb) {
-        const pv = parseSizeVal(styles['padding'].split(' ')[0]);
-        if (pv) s['padding'] = { unit: pv.unit, top: String(pv.size), right: String(pv.size), bottom: String(pv.size), left: String(pv.size), isLinked: true };
+        const parts = styles['padding'].trim().split(/\s+/);
+        const p0 = parseSizeVal(parts[0]);
+        const p1 = parseSizeVal(parts[1] || parts[0]);
+        const p2 = parseSizeVal(parts[2] || parts[0]);
+        const p3 = parseSizeVal(parts[3] || (parts[1] || parts[0]));
+        if (p0) {
+            const linked = parts.length === 1;
+            s['padding'] = {
+                unit: p0.unit,
+                top:    String(p0.size),
+                right:  String(p1 ? p1.size : p0.size),
+                bottom: String(p2 ? p2.size : p0.size),
+                left:   String(p3 ? p3.size : (p1 ? p1.size : p0.size)),
+                isLinked: linked
+            };
+        }
     } else if (pt || pb || pl || pr) {
-        s['padding'] = { unit: 'px', top: String(pt ? pt.size : 0), right: String(pr ? pr.size : 0), bottom: String(pb ? pb.size : 0), left: String(pl ? pl.size : 0), isLinked: false };
+        s['padding'] = {
+            unit: 'px',
+            top:    String(pt ? pt.size : 0),
+            right:  String(pr ? pr.size : 0),
+            bottom: String(pb ? pb.size : 0),
+            left:   String(pl ? pl.size : 0),
+            isLinked: false
+        };
     }
+
+    // Border radius
     if (styles['border-radius']) {
         const r = parseSizeVal(styles['border-radius'].split(' ')[0]);
         if (r) s['border_radius'] = { unit: r.unit, top: String(r.size), right: String(r.size), bottom: String(r.size), left: String(r.size), isLinked: true };
     }
+
+    // Min-height
+    if (styles['min-height']) {
+        const mh = parseSizeVal(styles['min-height']);
+        if (mh) s['min_height'] = mh;
+    }
+
     return s;
 }
 
@@ -608,10 +722,11 @@ function nodeToWidget($, el, cssData) {
         const $hd = $el.find('h1,h2,h3,h4,h5,h6').first();
         const $im = $el.find('img').first();
         const $pa = $el.find('p').first();
-        const $ic = $el.find('i[class*="icon"],i[class*="fa"],svg,.icon,.fas,.far,.fal,.fab').first();
+        // Only font-icon classes (not inline SVG) — SVG content is better handled via html widget
+        const $ic = $el.find('i[class*="fa"],i[class*="icon"],.fas,.far,.fal,.fab,.fad').first();
 
-        // Icon-box pattern: icon/svg + heading + (optional) paragraph
-        if ($hd.length && $ic.length && !$im.length) {
+        // Icon-box pattern: font-icon + heading + (optional) paragraph (SVG excluded intentionally)
+        if ($hd.length && $ic.length && !$im.length && !$el.find('svg').length) {
             const hSt = getElStyles($hd, cssData);
             const pSt = getElStyles($pa, cssData);
             const s = {
@@ -693,8 +808,21 @@ function buildSection($, el, cssData) {
     const $c      = $(content);
     if (!$c.text().trim() && !($c.html() || '').trim()) return null;
 
-    const sStyles = getElStyles($c, cssData);
-    const bgSet   = getContainerBgSettings(sStyles);
+    // Combine styles from both the outer el AND the drilled-down content element
+    const outerStyles  = getElStyles($(el), cssData);
+    const innerStyles  = getElStyles($c, cssData);
+    const sStyles      = Object.assign({}, outerStyles, innerStyles);
+    const bgSet        = getContainerBgSettings(sStyles);
+
+    // Max-width constraint → Elementor "boxed" container
+    const maxW = sStyles['max-width'];
+    if (maxW) {
+        const mwParsed = parseSizeVal(maxW);
+        if (mwParsed) {
+            bgSet['content_width'] = 'boxed';
+            bgSet['boxed_width']   = mwParsed;
+        }
+    }
 
     // Multi-column → Elementor grid container
     const colEls = detectCols($, content);
@@ -869,6 +997,8 @@ for (const file of htmlFiles) {
 
     // Extraer etiquetas <style> completas
     let pageCssText = '';
+    // pageInlineCss acumula las reglas de estilos inline para que Elementor las use al parsear
+    let pageInlineCss = [];
     html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_match, p1) => {
         cssRules.push(`/* Estilos extraídos de <style> en ${file} */`);
         cssRules.push(p1.trim());
@@ -879,7 +1009,9 @@ for (const file of htmlFiles) {
     // Extraer estilos inline (style="...")
     html = html.replace(/<([a-zA-Z0-9\-]+)([^>]*?)\bstyle\s*=\s*(["'])([\s\S]*?)\3([^>]*?)>/gi, (_match, tagName, beforeStyle, _quote, styleContent, afterStyle) => {
         let className = `tc-inline-${folderName}-${styleCounter++}`;
-        cssRules.push(`/* Extraído de ${file} */\n.${className} { ${styleContent} }`);
+        const inlineRule = `.${className} { ${styleContent} }`;
+        cssRules.push(`/* Extraído de ${file} */\n${inlineRule}`);
+        pageInlineCss.push(inlineRule);
 
         let restOfTag = beforeStyle + afterStyle;
         if (/class\s*=\s*["']/i.test(restOfTag)) {
@@ -1027,8 +1159,10 @@ for (const file of htmlFiles) {
     // En modo Elementor: convertir HTML a widgets nativos
     let elementorB64 = null;
     if (isElementorMode) {
+        // CSS completo = estilos de <style> tags + estilos inline extraídos como clases
+        const fullPageCss = pageCssText + (pageInlineCss.length ? '\n' + pageInlineCss.join('\n') : '');
         try {
-            const elData = convertHtmlToElementorData(bodyContent, pageCssText);
+            const elData = convertHtmlToElementorData(bodyContent, fullPageCss);
             elementorB64 = Buffer.from(JSON.stringify(elData)).toString('base64');
             console.log(`    🔧 Convertido a ${countElWidgets(elData)} widgets de Elementor.`);
         } catch (e) {
@@ -1132,6 +1266,41 @@ if (cssRules.length > 0) {
     console.log(`🎨 Estilos inyectados en assets/css/main.css`);
 }
 
+// 4b. En modo Elementor: agregar overrides de body/globals que Elementor necesita explícitamente
+if (isElementorMode && cssRules.length > 0) {
+    const mergedCss = cssRules.join('\n');
+    const gParsed = parseCSSForElementor(mergedCss);
+    const bodyRules = gParsed.rules['body'] || {};
+    const bg       = resolveVar(bodyRules['background-color'] || bodyRules['background'] || '', gParsed.vars);
+    const color    = resolveVar(bodyRules['color'] || '', gParsed.vars);
+    const ffamily  = resolveVar(bodyRules['font-family'] || '', gParsed.vars);
+    const fsize    = bodyRules['font-size'] || '';
+    const lh       = bodyRules['line-height'] || '';
+
+    // Extraer color del fondo (si es shorthand "background: color url(...) ...")
+    let resolvedBg = bg;
+    if (resolvedBg && resolvedBg.includes('url(')) {
+        const colM = resolvedBg.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/);
+        resolvedBg = colM ? colM[0] : '';
+    }
+
+    const lines = [];
+    if (resolvedBg) lines.push(`    background: ${resolvedBg};`);
+    if (color)      lines.push(`    color: ${color};`);
+    if (ffamily)    lines.push(`    font-family: ${ffamily};`);
+    if (fsize)      lines.push(`    font-size: ${fsize};`);
+    if (lh)         lines.push(`    line-height: ${lh};`);
+
+    if (lines.length > 0) {
+        const overrideCss = `\n/* BotConversor: overrides globales para Elementor (body background, fuentes, colores) */\nbody,\nbody.elementor-page,\n.elementor-page .elementor {\n${lines.join('\n')}\n}\n`;
+        fse.ensureDirSync(path.dirname(mainCssPath));
+        let mainCss = fs.readFileSync(mainCssPath, 'utf8');
+        mainCss += overrideCss;
+        fs.writeFileSync(mainCssPath, mainCss);
+        console.log(`🎨 Overrides de body/globals para Elementor inyectados en main.css`);
+    }
+}
+
 // 5. Generar script auto-setup.php con fallback admin_init
 console.log(`\n⚙️  Generando lógica de importación en inc/auto-setup.php...`);
 const incDir = path.join(newThemeDir, 'inc');
@@ -1169,8 +1338,11 @@ const elementorSetupCode = isElementorMode ? `
             );
             update_post_meta($page_id, '_elementor_data', wp_slash($elementor_json));
             update_post_meta($page_id, '_elementor_edit_mode', 'builder');
-            update_post_meta($page_id, '_elementor_version', '3.0.0');
+            update_post_meta($page_id, '_elementor_version', '3.21.5');
             update_post_meta($page_id, '_elementor_template_type', 'wp-page');
+            // Habilitar Flexbox Containers en Elementor (requerido para el formato de contenedores usado)
+            update_option('elementor_experiment-container', 'active');
+            update_option('elementor_container_width', '1400');
             file_put_contents($log_file, "Elementor configurado para: {$p['title']}\\n", FILE_APPEND);
         }` : '';
 
@@ -1348,6 +1520,10 @@ zipOutput.on('close', () => {
     console.log(`   Tema generado en:  ${newThemeDir}`);
     console.log(`   ZIP listo para subir: ${zipPath}`);
     console.log(`   Una vez activado el tema, revisá los logs en wp-content/theme-setup-log.txt`);
+    if (isElementorMode) {
+        console.log(`\n   ℹ️  ELEMENTOR: El auto-setup activa Flexbox Containers automáticamente.`);
+        console.log(`   Si las secciones no se ven, verificá en Elementor → Settings → Features → Flexbox Container = Active.`);
+    }
 });
 
 archive.on('error', (err) => {
