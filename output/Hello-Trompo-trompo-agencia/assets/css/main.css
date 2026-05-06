@@ -981,16 +981,26 @@
     .scroll-top-button:hover { background: var(--bg3); }
 
 /* Extraído de index (3).html */
-.tc-inline-hello-trompo-testing-1 { background-image: url('/trompo/img/hero/hero-01.jpg'); }
+.tc-inline-trompo-agencia-1 { background-image: url('/trompo/img/hero/hero-01.jpg'); }
 
 /* Extraído de index (3).html */
-.tc-inline-hello-trompo-testing-2 { background-image: url('/trompo/img/hero/hero-02.jpg'); }
+.tc-inline-trompo-agencia-2 { background-image: url('/trompo/img/hero/hero-02.jpg'); }
 
 /* Extraído de index (3).html */
-.tc-inline-hello-trompo-testing-3 { background-image: url('/trompo/img/hero/hero-03.jpg'); }
+.tc-inline-trompo-agencia-3 { background-image: url('/trompo/img/hero/hero-03.jpg'); }
 
 /* Extraído de index (3).html */
-.tc-inline-hello-trompo-testing-4 { justify-content: center; display: flex; gap: 10px; margin-bottom: 24px; }
+.tc-inline-trompo-agencia-4 { justify-content: center; display: flex; gap: 10px; margin-bottom: 24px; }
 
 /* Extraído de index (3).html */
-.tc-inline-hello-trompo-testing-5 { color:var(--ink) }
+.tc-inline-trompo-agencia-5 { color:var(--ink) }
+/* BotConversor: overrides globales para Elementor (body background, fuentes, colores) */
+body,
+body.elementor-page,
+.elementor-page .elementor {
+    background: #0a0a0a;
+    color: #f0ede6;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+}

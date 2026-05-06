@@ -33,7 +33,7 @@
           <li>Lunes a Viernes</li>
           <li>09:00 a 18:00 hs</li>
           <li>&nbsp;</li>
-          <li><strong  class="tc-inline-testing-5">Córdoba, Argentina</strong></li>
+          <li><strong  class="tc-inline-trompo-agencia-5">Córdoba, Argentina</strong></li>
         </ul>
       </div>
     </div>

@@ -981,16 +981,16 @@
     .scroll-top-button:hover { background: var(--bg3); }
 
 /* Extraído de index (3).html */
-.tc-inline-testing-1 { background-image: url('/trompo/img/hero/hero-01.jpg'); }
+.tc-inline-hola-trompo-web-1 { background-image: url('/trompo/img/hero/hero-01.jpg'); }
 
 /* Extraído de index (3).html */
-.tc-inline-testing-2 { background-image: url('/trompo/img/hero/hero-02.jpg'); }
+.tc-inline-hola-trompo-web-2 { background-image: url('/trompo/img/hero/hero-02.jpg'); }
 
 /* Extraído de index (3).html */
-.tc-inline-testing-3 { background-image: url('/trompo/img/hero/hero-03.jpg'); }
+.tc-inline-hola-trompo-web-3 { background-image: url('/trompo/img/hero/hero-03.jpg'); }
 
 /* Extraído de index (3).html */
-.tc-inline-testing-4 { justify-content: center; display: flex; gap: 10px; margin-bottom: 24px; }
+.tc-inline-hola-trompo-web-4 { justify-content: center; display: flex; gap: 10px; margin-bottom: 24px; }
 
 /* Extraído de index (3).html */
-.tc-inline-testing-5 { color:var(--ink) }
+.tc-inline-hola-trompo-web-5 { color:var(--ink) }
